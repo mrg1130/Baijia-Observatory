@@ -54,6 +54,12 @@ class StudioTest(unittest.TestCase):
         self.assertEqual(self.client.post('/api/demo',json={},headers={'Origin':'https://evil.invalid'}).status_code,403)
         self.assertEqual(self.client.post('/api/demo',content='{}',headers={'Content-Type':'text/plain'}).status_code,415)
 
+    def test_manual_opens_in_desktop_or_falls_back_to_browser(self):
+        self.assertEqual(self.client.post('/api/manual/open',json={}).json(),{'desktop':False})
+        with patch.object(server.app.state,'open_manual',create=True,return_value={'ok':True}) as opener:
+            self.assertEqual(self.client.post('/api/manual/open',json={}).json(),{'desktop':True,'ok':True})
+            opener.assert_called_once_with()
+
     def test_demo_is_separate_and_persists_without_session(self):
         self.demo()
         self.demo()

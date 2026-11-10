@@ -73,8 +73,9 @@ def main():
         thread.join(5)
         return
     browser_login.native_client=NativeBaidu()
+    app.state.open_manual=DesktopApi().open_manual
     webview.settings['ALLOW_DOWNLOADS']=True
-    main_window=webview.create_window('百家观测',url,js_api=DesktopApi(),width=1440,height=960,min_size=(1000,700),
+    main_window=webview.create_window('百家观测',url,width=1440,height=960,min_size=(1000,700),
                                      text_select=True,background_color='#f5f6f3')
     def close():
         browser_login.native_client.close(workspace['id'])
@@ -86,12 +87,14 @@ def main():
             if not main_window.events.loaded.wait(30):
                 raise RuntimeError('Desktop document did not load')
             for _ in range(100):
-                snapshot=read_snapshot(main_window,"({title:document.title,text:document.body.innerText,manual:typeof window.pywebview?.api?.open_manual==='function'})")
+                snapshot=read_snapshot(main_window,"({title:document.title,text:document.body.innerText,manual:!!document.querySelector('[data-action=manual]')})")
                 body=snapshot.get('text','')
                 if snapshot.get('manual') and all(label in body for label in ['数据概览','添加监控账号','连接与设置']):
-                    report={'status':'ok','title':snapshot.get('title'),'workspace_rendered':True,'manual_api_ready':True}
+                    report={'status':'ok','title':snapshot.get('title'),'workspace_rendered':True,'manual_button_rendered':True}
                     break
                 time.sleep(.1)
+            if report['status']!='ok':
+                report['snapshot']=snapshot
         except Exception as exc:
             report['error']=str(exc)
         finally:

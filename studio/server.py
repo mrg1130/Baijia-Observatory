@@ -82,6 +82,12 @@ def manual():
     return FileResponse(target, media_type='application/pdf', filename='百家观测使用说明.pdf')
 
 
+@app.post('/api/manual/open')
+def open_manual():
+    opener = getattr(app.state, 'open_manual', None)
+    return {'desktop': True, **opener()} if opener else {'desktop': False}
+
+
 class CookieBody(BaseModel):
     cookie: str = Field(min_length=1, max_length=50000)
 
