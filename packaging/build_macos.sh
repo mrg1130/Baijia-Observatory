@@ -8,7 +8,22 @@ python3 -m PyInstaller --noconfirm packaging/app.spec
 APP="dist/百家观测.app"
 "$APP/Contents/MacOS/BaijiaObservatory" --smoke-test
 codesign --force --deep --sign - "$APP"
-pkgbuild --component "$APP" --install-location /Applications --identifier com.baijia.observatory --version 1.1.0 "$OUT/BaijiaObservatory-1.1.0-macOS-$ARCH.pkg"
+STAGE="$(mktemp -d "${TMPDIR:-/tmp}/baijia-package.XXXXXX")"
+trap 'rm -rf "$STAGE"' EXIT
+mkdir -p "$STAGE/root"
+ditto "$APP" "$STAGE/root/百家观测.app"
+pkgbuild --analyze --root "$STAGE/root" "$STAGE/components.plist"
+python3 - "$STAGE/components.plist" <<'PY'
+import plistlib
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+components = plistlib.loads(path.read_bytes())
+for component in components:
+    component['BundleIsRelocatable'] = False
+path.write_bytes(plistlib.dumps(components))
+PY
+pkgbuild --root "$STAGE/root" --component-plist "$STAGE/components.plist" --install-location /Applications --identifier com.baijia.observatory --version 1.1.0 "$OUT/BaijiaObservatory-1.1.0-macOS-$ARCH.pkg"
 if [[ "${CI:-}" == "true" ]]; then
     sudo installer -pkg "$OUT/BaijiaObservatory-1.1.0-macOS-$ARCH.pkg" -target /
     "/Applications/百家观测.app/Contents/MacOS/BaijiaObservatory" --smoke-test
