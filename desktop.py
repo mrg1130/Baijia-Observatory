@@ -19,6 +19,7 @@ from studio.storage import DATA
 from studio.server import app
 from studio import browser_login
 from studio.native_login import NativeBaidu
+from studio.desktop_js import read_snapshot
 
 
 class DesktopApi:
@@ -85,9 +86,10 @@ def main():
             if not main_window.events.loaded.wait(30):
                 raise RuntimeError('Desktop document did not load')
             for _ in range(100):
-                body=main_window.evaluate_js('document.body.innerText') or ''
-                if all(label in body for label in ['数据概览','添加监控账号','连接与设置']):
-                    report={'status':'ok','title':main_window.evaluate_js('document.title'),'workspace_rendered':True}
+                snapshot=read_snapshot(main_window,"({title:document.title,text:document.body.innerText,manual:typeof window.pywebview?.api?.open_manual==='function'})")
+                body=snapshot.get('text','')
+                if snapshot.get('manual') and all(label in body for label in ['数据概览','添加监控账号','连接与设置']):
+                    report={'status':'ok','title':snapshot.get('title'),'workspace_rendered':True,'manual_api_ready':True}
                     break
                 time.sleep(.1)
         except Exception as exc:

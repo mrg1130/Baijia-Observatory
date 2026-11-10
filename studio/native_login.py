@@ -5,6 +5,7 @@ from urllib.parse import urlencode, urlparse, parse_qs
 import webview
 
 from .storage import set_cookie
+from .desktop_js import read_snapshot
 
 
 class NativeBaidu:
@@ -71,7 +72,7 @@ class NativeBaidu:
             self.window.load_url(url)
         snapshot={}
         for _ in range(70):
-            snapshot=self.window.evaluate_js('({title:document.title,html:document.documentElement.outerHTML,ready:document.readyState,url:location.href,results:document.querySelectorAll("#content_left .c-container,#content_left .result,.cosc-title").length})') or {}
+            snapshot=read_snapshot(self.window,'({title:document.title,html:document.documentElement.outerHTML,ready:document.readyState,url:location.href,results:document.querySelectorAll("#content_left .c-container,#content_left .result,.cosc-title").length})')
             host=urlparse(snapshot.get('url','')).hostname
             challenge='安全验证' in snapshot.get('title','') or host=='wappass.baidu.com'
             matches=parse_qs(urlparse(snapshot.get('url','')).query).get('wd')==[query]
