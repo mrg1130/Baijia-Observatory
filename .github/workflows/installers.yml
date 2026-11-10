@@ -1,0 +1,40 @@
+name: Desktop installers
+on:
+  workflow_dispatch:
+  push:
+    branches: [desktop-installers]
+permissions:
+  contents: read
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-build.txt
+      - run: python -m unittest discover -s tests -v
+      - run: bash packaging/build_macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macOS-${{ matrix.runner }}
+          path: release/*.pkg
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-build.txt
+      - run: python -m unittest discover -s tests -v
+      - run: python packaging/build_windows.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-x64
+          path: release/*Setup.exe

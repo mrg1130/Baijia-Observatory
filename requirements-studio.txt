@@ -1,0 +1,6 @@
+curl_cffi==0.17.0
+fastapi==0.162.2
+uvicorn==0.54.0
+beautifulsoup4==4.15.0
+websocket-client==1.9.2
+httpx==0.28.1
