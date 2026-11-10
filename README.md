@@ -20,8 +20,8 @@
 | Mac Apple M 系列 | [macOS-arm64.pkg](https://github.com/mrg1130/private/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-arm64.pkg) |
 | Mac Intel | [macOS-x86_64.pkg](https://github.com/mrg1130/private/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-x86_64.pkg) |
 
-- **Windows：**运行安装包，完成后从桌面或开始菜单打开“百家观测”。安装器会检查并补装 Microsoft WebView2 运行组件。
-- **Mac：**运行对应芯片的安装包，从“应用程序”打开“百家观测”。在“Apple 菜单 → 关于本机”查看芯片类型。首次安装若系统要求确认开发者，在“系统设置 → 隐私与安全性”中选择“仍要打开”。
+- **Windows：** 运行安装包，完成后从桌面或开始菜单打开“百家观测”。安装器会检查并补装 Microsoft WebView2 运行组件。
+- **Mac：** 运行对应芯片的安装包，从“应用程序”打开“百家观测”。在“Apple 菜单 → 关于本机”查看芯片类型。首次安装若系统要求确认开发者，在“系统设置 → 隐私与安全性”中选择“仍要打开”。
 
 发布页位于私有仓库，使用拥有该仓库访问权的 GitHub 账号下载。软件右上角“使用说明”可打开内置 PDF。
 
