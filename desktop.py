@@ -36,6 +36,7 @@ class DesktopApi:
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--smoke-test',action='store_true')
+    parser.add_argument('--ui-smoke-test',action='store_true')
     args=parser.parse_args()
     DATA.mkdir(parents=True,exist_ok=True)
     logging.basicConfig(filename=DATA/'desktop.log',level=logging.WARNING,format='%(asctime)s %(levelname)s %(message)s')
@@ -78,8 +79,25 @@ def main():
         browser_login.native_client.close(workspace['id'])
         server.should_exit=True
     main_window.events.closed+=close
+    def verify_ui():
+        report={'status':'failed'}
+        try:
+            if not main_window.events.loaded.wait(30):
+                raise RuntimeError('Desktop document did not load')
+            for _ in range(100):
+                body=main_window.evaluate_js('document.body.innerText') or ''
+                if all(label in body for label in ['数据概览','添加监控账号','连接与设置']):
+                    report={'status':'ok','title':main_window.evaluate_js('document.title'),'workspace_rendered':True}
+                    break
+                time.sleep(.1)
+        except Exception as exc:
+            report['error']=str(exc)
+        finally:
+            (DATA/'ui-smoke-test.json').write_text(json.dumps(report,ensure_ascii=False),encoding='utf-8')
+            main_window.destroy()
     try:
-        webview.start(gui='edgechromium' if os.name=='nt' else 'cocoa',private_mode=False,storage_path=str(DATA/'webview'))
+        webview.start(func=verify_ui if args.ui_smoke_test else None,gui='edgechromium' if os.name=='nt' else 'cocoa',
+                      private_mode=False,storage_path=str(DATA/'webview'))
     finally:
         server.should_exit=True
         thread.join(4)

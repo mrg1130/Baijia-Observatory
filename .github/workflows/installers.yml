@@ -38,3 +38,32 @@ jobs:
         with:
           name: Windows-x64
           path: release/*Setup.exe
+  release:
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - name: Prepare installation notes
+        run: |
+          cp studio/manual.pdf release/Manual.pdf
+          cat > release-notes.md <<'EOF'
+          百家观测 1.1.0
+
+          Windows：运行 Windows-x64-Setup.exe，完成后打开桌面快捷方式。
+          Apple Silicon Mac：运行 macOS-arm64.pkg。
+          Intel Mac：运行 macOS-x86_64.pkg。
+          Mac 安装后从「应用程序」打开「百家观测」。首次安装如需确认开发者，在「系统设置 → 隐私与安全性」中选择「仍要打开」。
+
+          打开软件直接进入工作台。图文教程见 Manual.pdf，软件内也可直接打开。
+          EOF
+      - name: Publish private installer release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v1.1.0 --target "$GITHUB_SHA" --title "百家观测 1.1.0" --notes-file release-notes.md release/*

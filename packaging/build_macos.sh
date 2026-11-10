@@ -12,12 +12,15 @@ pkgbuild --component "$APP" --install-location /Applications --identifier com.ba
 if [[ "${CI:-}" == "true" ]]; then
     sudo installer -pkg "$OUT/BaijiaObservatory-1.1.0-macOS-$ARCH.pkg" -target /
     "/Applications/百家观测.app/Contents/MacOS/BaijiaObservatory" --smoke-test
+    "/Applications/百家观测.app/Contents/MacOS/BaijiaObservatory" --ui-smoke-test
     python3 - <<'PY'
 import json
 from pathlib import Path
 report = Path.home() / 'Library/Application Support/BaijiaObservatory/smoke-test.json'
 assert json.loads(report.read_text())['status'] == 'ok'
+ui_report = report.with_name('ui-smoke-test.json')
+assert json.loads(ui_report.read_text())['status'] == 'ok', ui_report.read_text()
 assert Path('/Applications/百家观测.app/Contents/Resources/studio/manual.pdf').is_file()
-print('Installed application backend and bundled manual verified.')
+print('Installed application backend, rendered desktop workspace, and bundled manual verified.')
 PY
 fi
