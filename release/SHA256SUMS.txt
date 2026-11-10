@@ -1,0 +1,4 @@
+5961bffd9d19e70504c8ae1112adea92dc3b37489034859eeee889b38b7c6834  BaijiaObservatory-1.1.0-Windows-x64-Setup.exe
+5588c57e195b1149031fd75dd27a63b51ef7ff77a17dafec1fcdf32dc5ab1eab  BaijiaObservatory-1.1.0-macOS-arm64.pkg
+698e48a1222b1b558cd755a4e7e619be9c0a0938f431d32dc21d2b00ab66f17d  BaijiaObservatory-1.1.0-macOS-x86_64.pkg
+81e59212371a78839e9b3d304f90151472e294869f8bbdd003f9e1a6b8ee89cf  Manual.pdf
