@@ -6,29 +6,29 @@
 
 当前版本：**1.1.0**。提供 Windows x64、Mac Apple Silicon 和 Mac Intel 安装包，运行环境随安装包提供。打开软件直接进入本地工作台。
 
-[下载安装包](https://github.com/mrg1130/private/releases/latest) · [12 页图文教程](studio/manual.pdf) · [许可证](LICENSE) · [上游与第三方说明](THIRD_PARTY_NOTICES.md)
+[下载安装包](https://github.com/mrg1130/Baijia-Observatory/releases/latest) · [12 页图文教程](studio/manual.pdf) · [许可证](LICENSE) · [上游与第三方说明](THIRD_PARTY_NOTICES.md)
 
 ![百家观测数据概览](docs/images/overview.png)
 
-截图为“中国石油报”近期 100 件作品的采集与统计示例，采集日期为 2026-11-10。
+截图展示测试账号近期 100 件作品。账号名称、头像、主页标识和作品标题已模糊化。
 
 ## 安装
 
 | 平台 | 安装包 |
 | --- | --- |
-| Windows 64 位 | [Windows-x64-Setup.exe](https://github.com/mrg1130/private/releases/download/v1.1.0/BaijiaObservatory-1.1.0-Windows-x64-Setup.exe) |
-| Mac Apple M 系列 | [macOS-arm64.pkg](https://github.com/mrg1130/private/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-arm64.pkg) |
-| Mac Intel | [macOS-x86_64.pkg](https://github.com/mrg1130/private/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-x86_64.pkg) |
+| Windows 64 位 | [Windows-x64-Setup.exe](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-Windows-x64-Setup.exe) |
+| Mac Apple M 系列 | [macOS-arm64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-arm64.pkg) |
+| Mac Intel | [macOS-x86_64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-x86_64.pkg) |
 
 - **Windows：** 运行安装包，完成后从桌面或开始菜单打开“百家观测”。安装器会检查并补装 Microsoft WebView2 运行组件。
 - **Mac：** 运行对应芯片的安装包，从“应用程序”打开“百家观测”。在“Apple 菜单 → 关于本机”查看芯片类型。首次安装若系统要求确认开发者，在“系统设置 → 隐私与安全性”中选择“仍要打开”。
 
-发布页位于私有仓库，使用拥有该仓库访问权的 GitHub 账号下载。软件右上角“使用说明”可打开内置 PDF。
+安装包可从公开发布页下载。软件右上角“使用说明”可打开内置 PDF。
 
 ## 快速使用
 
 1. 打开“连接与设置”，点击“打开百度官方登录窗口”。在官方页面选择扫码、短信验证码、账号密码或页面提供的其他登录方式，完成后等待显示“百度已连接”。
-2. 点击“添加监控账号”，粘贴百家号作者主页链接并选择“识别并添加”。示例：[中国石油报](https://author.baidu.com/home/1595713367276134)。
+2. 点击“添加监控账号”，粘贴百家号作者主页链接并选择“识别并添加”。地址格式：`https://author.baidu.com/home/数字ID`。
 3. 选择“全部历史作品”或近期 100 / 500 / 1000 件，开始同步。任务会显示页数、处理数量和完成状态。
 4. 在“数据概览”或“作品数据”中选择作者和发布日期范围，按阅读 / 播放、互动指标或自定义公式排序。“高浏览作品”展示当前统计范围内浏览量最高的前 5 件作品。
 5. 按需勾选作品，启用“仅统计手选作品”，创建统计器或点击“导出数据”生成 CSV。
@@ -185,6 +185,8 @@ docs/images/               README 截图
 ```
 
 ## 文档维护
+
+截图使用 `docs/screenshot_preview.py` 生成。使用虚拟环境的 Python 运行该脚本，访问 `http://127.0.0.1:8767/_screenshots`，页面会统一模糊账号名称、头像、主页标识和作品标题。README 与 PDF 共用此模式下生成的截图。
 
 `README.md` 和 `README.en.md` 保持相同的功能、安装包、命令和指标定义。修改界面、采集范围、统计口径或发布版本时，同时更新两份 README；操作步骤或截图变化时同步维护 `studio/manual.pdf` 和 `docs/images/`。新增依赖或继承上游文件时，更新许可与来源记录。
 

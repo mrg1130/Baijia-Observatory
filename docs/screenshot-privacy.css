@@ -1,0 +1,27 @@
+/* Applied by the documentation preview route before the app renders. */
+.screenshot-privacy .side-author[data-action="author"],
+.screenshot-privacy #author-filter,
+.screenshot-privacy .mini-avatar,
+.screenshot-privacy .post-title,
+.screenshot-privacy .post-sub > span:nth-child(2),
+.screenshot-privacy .rank-title,
+.screenshot-privacy .result-name,
+.screenshot-privacy .result-note,
+.screenshot-privacy #author-url,
+.screenshot-privacy #sync-url,
+.screenshot-privacy #search-input,
+.screenshot-privacy #cookie-value,
+.screenshot-privacy .jobs-top > .mono,
+.screenshot-privacy .job-item > p:first-of-type,
+.screenshot-privacy #modal:has(#sync-form) h2 {
+  filter: blur(9px);
+  opacity: .65;
+  user-select: none;
+}
+.screenshot-privacy .post-title,
+.screenshot-privacy .rank-title,
+.screenshot-privacy .result-name,
+.screenshot-privacy .result-note {
+  clip-path: inset(0);
+  pointer-events: none;
+}

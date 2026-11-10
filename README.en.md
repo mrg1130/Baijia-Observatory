@@ -6,29 +6,29 @@ A desktop workspace for Baijiahao content analytics. Add authors by their homepa
 
 Current version: **1.1.0**, with installers for Windows x64, Apple Silicon Macs and Intel Macs. The runtime is bundled. The app opens directly into a local workspace. The desktop interface uses Simplified Chinese; this guide includes the corresponding UI labels.
 
-[Download installers](https://github.com/mrg1130/private/releases/latest) · [12-page illustrated guide, in Chinese](studio/manual.pdf) · [License](LICENSE) · [Upstream and third-party notices](THIRD_PARTY_NOTICES.md)
+[Download installers](https://github.com/mrg1130/Baijia-Observatory/releases/latest) · [12-page illustrated guide, in Chinese](studio/manual.pdf) · [License](LICENSE) · [Upstream and third-party notices](THIRD_PARTY_NOTICES.md)
 
 ![Baijia Observatory overview](docs/images/overview.png)
 
-The screenshot shows a collection of 100 recent works from 中国石油报, captured on November 10, 2026.
+The screenshot shows 100 recent works from a test author. Account names, avatars, homepage identifiers and work titles are blurred.
 
 ## Installation
 
 | Platform | Installer |
 | --- | --- |
-| Windows 64-bit | [Windows-x64-Setup.exe](https://github.com/mrg1130/private/releases/download/v1.1.0/BaijiaObservatory-1.1.0-Windows-x64-Setup.exe) |
-| Apple Silicon Mac | [macOS-arm64.pkg](https://github.com/mrg1130/private/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-arm64.pkg) |
-| Intel Mac | [macOS-x86_64.pkg](https://github.com/mrg1130/private/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-x86_64.pkg) |
+| Windows 64-bit | [Windows-x64-Setup.exe](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-Windows-x64-Setup.exe) |
+| Apple Silicon Mac | [macOS-arm64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-arm64.pkg) |
+| Intel Mac | [macOS-x86_64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-x86_64.pkg) |
 
 - **Windows:** Run the installer, then open 百家观测 from the desktop or Start menu. The installer checks for Microsoft WebView2 and installs the runtime when needed.
 - **Mac:** Run the package for your processor, then open 百家观测 from Applications. Check the processor under Apple menu → About This Mac. If macOS requests developer confirmation during the first installation, select Open Anyway under System Settings → Privacy & Security.
 
-The release page is in a private repository; download using a GitHub account with access to it. The 使用说明 button at the top right opens the bundled PDF.
+Download the installers from the public release page. The 使用说明 button at the top right opens the bundled PDF.
 
 ## Quick start
 
 1. Open 连接与设置 (Connections & Settings), then select 打开百度官方登录窗口 (Open the official Baidu login window). Use QR code, SMS, account/password or another method offered by the official page. Wait for 百度已连接 (Baidu connected).
-2. Select 添加监控账号 (Add monitored author), paste a Baijiahao author homepage URL and select 识别并添加 (Identify and add). Example: [中国石油报](https://author.baidu.com/home/1595713367276134).
+2. Select 添加监控账号 (Add monitored author), paste a Baijiahao author homepage URL and select 识别并添加 (Identify and add). URL format: `https://author.baidu.com/home/NUMERIC_ID`.
 3. Choose 全部历史作品 (All historical works) or the latest 100 / 500 / 1000 works and start syncing. The task displays page count, processed works and completion status.
 4. In 数据概览 (Overview) or 作品数据 (Works), select an author and publication date range. Sort by views, interactions or a custom formula. 高浏览作品 (Most-viewed works) shows the top five by views within the current statistical scope.
 5. Optionally check individual works and enable 仅统计手选作品 (Selected works only). Create a calculator or select 导出数据 (Export data) to generate a CSV.
@@ -185,6 +185,8 @@ docs/images/               README screenshots
 ```
 
 ## Documentation maintenance
+
+Generate screenshots with `docs/screenshot_preview.py`. Run it using the virtual environment’s Python, then open `http://127.0.0.1:8767/_screenshots`. The page blurs account names, avatars, homepage identifiers and work titles. README and PDF images share this capture mode.
 
 Keep `README.md` and `README.en.md` aligned on features, installers, commands and metric definitions. Update both when changing the interface, collection scope, calculations or release version. Refresh `studio/manual.pdf` and `docs/images/` when instructions or screenshots change. Update license and provenance records when adding dependencies or upstream files.
 
