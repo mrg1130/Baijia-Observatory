@@ -1,0 +1,25 @@
+name: Installer delivery archive
+on:
+  push:
+    branches: [installer-delivery]
+permissions:
+  contents: write
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download verified release installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v1.1.0 --repo "$GITHUB_REPOSITORY" --dir release
+      - name: Check and archive installer files
+        run: |
+          cd release
+          sha256sum * > SHA256SUMS.txt
+          cd ..
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f release
+          git commit -m 'Archive verified 1.1.0 installers'
+          git push origin HEAD:installer-delivery
