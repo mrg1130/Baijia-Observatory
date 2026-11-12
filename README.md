@@ -4,7 +4,7 @@
 
 百家号内容数据桌面工作台。通过作者主页链接添加监控账号，采集作品的浏览和互动数据，按作者、发布日期和手选范围统计、排序并导出。
 
-当前版本：**1.1.0**。提供 Windows x64、Mac Apple Silicon 和 Mac Intel 安装包，运行环境随安装包提供。打开软件直接进入本地工作台。
+当前版本：**1.2.0**。提供 Windows x64、Mac Apple Silicon 和 Mac Intel 安装包，运行环境随安装包提供。打开软件直接进入本地工作台。
 
 [下载安装包](https://github.com/mrg1130/Baijia-Observatory/releases/latest) · [12 页图文教程](studio/manual.pdf) · [许可证](LICENSE) · [上游与第三方说明](THIRD_PARTY_NOTICES.md)
 
@@ -12,13 +12,18 @@
 
 截图展示测试账号近期 100 件作品。账号名称、头像、主页标识和作品标题已模糊化。
 
+## 1.2.0 更新
+
+- 采用伙伴提交的百度旧登录态修复，重新登录和断开连接时清理旧会话，重启后继续完成待处理的清理。
+- 新增小型“关于”弹窗，展示应用版本、工作室 logo 和“创想澄现工作出品”。从侧栏底部或页面底部“关于”打开。
+
 ## 安装
 
 | 平台 | 安装包 |
 | --- | --- |
-| Windows 64 位 | [Windows-x64-Setup.exe](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-Windows-x64-Setup.exe) |
-| Mac Apple M 系列 | [macOS-arm64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-arm64.pkg) |
-| Mac Intel | [macOS-x86_64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-x86_64.pkg) |
+| Windows 64 位 | [Windows-x64-Setup.exe](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.2.0/BaijiaObservatory-1.2.0-Windows-x64-Setup.exe) |
+| Mac Apple M 系列 | [macOS-arm64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.2.0/BaijiaObservatory-1.2.0-macOS-arm64.pkg) |
+| Mac Intel | [macOS-x86_64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.2.0/BaijiaObservatory-1.2.0-macOS-x86_64.pkg) |
 
 - **Windows：** 运行安装包，完成后从桌面或开始菜单打开“百家观测”。安装器会检查并补装 Microsoft WebView2 运行组件。
 - **Mac：** 运行对应芯片的安装包，从“应用程序”打开“百家观测”。在“Apple 菜单 → 关于本机”查看芯片类型。首次安装若系统要求确认开发者，在“系统设置 → 隐私与安全性”中选择“仍要打开”。
@@ -134,7 +139,7 @@ Windows 使用 `.\.venv\Scripts\python.exe`，Mac 使用 `.venv/bin/python` 执�
 
 浏览器开发模式默认打开 `http://127.0.0.1:8765`，可用 `--port` 指定端口。设置 `BAIJIA_DATA_DIR` 可为开发进程指定独立数据目录。
 
-测试覆盖主页录入、连接状态、分页和完成状态、日期与手选筛选、公式、CSV、旧工作台迁移及 Windows / Mac 网页脚本结果适配。1.1.0 已完成 Windows 实际安装验证，以及两种 Mac 架构的安装、本机服务和桌面界面加载验证。
+测试覆盖主页录入、连接状态、分页和完成状态、日期与手选筛选、公式、CSV、旧工作台迁移及 Windows / Mac 网页脚本结果适配。发布流程还检查打包后的本机服务、桌面界面、关于入口和内置 logo，并在两种 Mac 架构上验证安装。
 
 ### 原始接口
 

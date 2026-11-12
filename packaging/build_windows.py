@@ -1,4 +1,5 @@
 import argparse
+import runpy
 import shutil
 import subprocess
 import sys
@@ -7,6 +8,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 root=Path(__file__).resolve().parents[1]
+version=runpy.run_path(str(root/'studio/version.py'))['APP_VERSION']
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',type=Path,default=root/'release')
 args=parser.parse_args()
@@ -19,10 +21,10 @@ with ZipFile(stage/'payload.zip','w',ZIP_DEFLATED) as z:
     for file in app.rglob('*'):
         if file.is_file():z.write(file,file.relative_to(app))
 for name in ['install.cmd','install.ps1']:
-    text=(root/'packaging'/name).read_text(encoding='utf-8')
+    text=(root/'packaging'/name).read_text(encoding='utf-8').replace('__APP_VERSION__',version)
     (stage/name).write_text(text,encoding='utf-8-sig' if name.endswith('.ps1') else 'ascii',newline='\r\n')
 # Use Windows' built-in IExpress to produce a self-contained per-user installer.
-target=output/'BaijiaObservatory-1.1.0-Windows-x64-Setup.exe'
+target=output/f'BaijiaObservatory-{version}-Windows-x64-Setup.exe'
 sed='''[Version]
 Class=IEXPRESS
 SEDVersion=3
@@ -35,7 +37,7 @@ InsideCompressed=0
 CAB_FixedSize=0
 CAB_ResvCodeSigning=0
 RebootMode=N
-InstallPrompt=Install Baijia Observatory 1.1.0?
+InstallPrompt=Install Baijia Observatory {version}?
 DisplayLicense=
 FinishMessage=Installation complete. Open Baijia Observatory from the desktop.
 TargetName={target}
@@ -55,7 +57,7 @@ SourceFiles0={stage}\\
 %FILE0%=
 %FILE1%=
 %FILE2%=
-'''.format(target=target,stage=stage)
+'''.format(target=target,stage=stage,version=version)
 spec=stage/'installer.sed';spec.write_text(sed,encoding='mbcs',newline='\r\n')
 subprocess.run(['iexpress.exe','/N','/Q',str(spec)],cwd=stage,check=True)
 if not target.is_file():raise RuntimeError('Installer was not produced')

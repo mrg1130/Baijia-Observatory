@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ARCH="$(uname -m)"
+VERSION="$(python3 -c 'import runpy; print(runpy.run_path("studio/version.py")["APP_VERSION"])')"
 OUT="${1:-release}"
 mkdir -p "$OUT"
 python3 -m PyInstaller --noconfirm packaging/app.spec
@@ -23,9 +24,10 @@ for component in components:
     component['BundleIsRelocatable'] = False
 path.write_bytes(plistlib.dumps(components))
 PY
-pkgbuild --root "$STAGE/root" --component-plist "$STAGE/components.plist" --install-location /Applications --identifier com.baijia.observatory --version 1.1.0 "$OUT/BaijiaObservatory-1.1.0-macOS-$ARCH.pkg"
+PACKAGE="$OUT/BaijiaObservatory-$VERSION-macOS-$ARCH.pkg"
+pkgbuild --root "$STAGE/root" --component-plist "$STAGE/components.plist" --install-location /Applications --identifier com.baijia.observatory --version "$VERSION" "$PACKAGE"
 if [[ "${CI:-}" == "true" ]]; then
-    sudo installer -pkg "$OUT/BaijiaObservatory-1.1.0-macOS-$ARCH.pkg" -target /
+    sudo installer -pkg "$PACKAGE" -target /
     "/Applications/百家观测.app/Contents/MacOS/BaijiaObservatory" --smoke-test
     "/Applications/百家观测.app/Contents/MacOS/BaijiaObservatory" --ui-smoke-test
     python3 - <<'PY'

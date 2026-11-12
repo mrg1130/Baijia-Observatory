@@ -20,6 +20,7 @@ from studio.server import app
 from studio import browser_login
 from studio.native_login import NativeBaidu
 from studio.desktop_js import read_snapshot
+from studio.version import APP_NAME, APP_VERSION, APP_CREDIT
 
 
 class DesktopApi:
@@ -36,6 +37,7 @@ class DesktopApi:
 
 def main():
     parser=argparse.ArgumentParser()
+    parser.add_argument('--version', action='version', version=f'{APP_NAME} {APP_VERSION}')
     parser.add_argument('--smoke-test',action='store_true')
     parser.add_argument('--ui-smoke-test',action='store_true')
     args=parser.parse_args()
@@ -68,7 +70,14 @@ def main():
     else:
         raise RuntimeError('工作台启动超时，请重新打开软件')
     if args.smoke_test:
-        (DATA/'smoke-test.json').write_text(json.dumps({'status':'ok','workspace':workspace,'url':url}),encoding='utf-8')
+        with urllib.request.urlopen(url+'/api/about',timeout=5) as response:
+            about=json.load(response)
+        assert about['version']==APP_VERSION and about['credit']==APP_CREDIT
+        for key in ['logo','app_logo']:
+            with urllib.request.urlopen(url+about[key],timeout=5) as response:
+                assert response.read(8)==b'\x89PNG\r\n\x1a\n', f'Missing bundled image: {key}'
+        (DATA/'smoke-test.json').write_text(json.dumps({'status':'ok','version':APP_VERSION,'about':about,
+            'logos_bundled':True,'workspace':workspace,'url':url}),encoding='utf-8')
         server.should_exit=True
         thread.join(5)
         return
@@ -87,10 +96,11 @@ def main():
             if not main_window.events.loaded.wait(30):
                 raise RuntimeError('Desktop document did not load')
             for _ in range(100):
-                snapshot=read_snapshot(main_window,"({title:document.title,text:document.body.innerText,manual:!!document.querySelector('[data-action=manual]')})")
+                snapshot=read_snapshot(main_window,"({title:document.title,text:document.body.innerText,manual:!!document.querySelector('[data-action=manual]'),about:!!document.querySelector('[data-action=about]')})")
                 body=snapshot.get('text','')
-                if snapshot.get('manual') and all(label in body for label in ['数据概览','添加监控账号','连接与设置']):
-                    report={'status':'ok','title':snapshot.get('title'),'workspace_rendered':True,'manual_button_rendered':True}
+                if snapshot.get('manual') and snapshot.get('about') and all(label in body for label in ['数据概览','添加监控账号','连接与设置']):
+                    report={'status':'ok','version':APP_VERSION,'title':snapshot.get('title'),'workspace_rendered':True,
+                            'manual_button_rendered':True,'about_button_rendered':True}
                     break
                 time.sleep(.1)
             if report['status']!='ok':

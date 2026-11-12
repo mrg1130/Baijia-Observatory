@@ -34,6 +34,14 @@ jobs:
       - run: python -m pip install -r requirements-build.txt
       - run: python -m unittest discover -s tests -v
       - run: python packaging/build_windows.py
+      - name: Verify packaged Windows app
+        shell: pwsh
+        run: |
+          $env:BAIJIA_DATA_DIR = Join-Path $env:RUNNER_TEMP 'baijia-smoke'
+          $app = Join-Path $PWD 'dist/BaijiaObservatory/BaijiaObservatory.exe'
+          Start-Process -FilePath $app -ArgumentList '--smoke-test' -WindowStyle Hidden -Wait
+          Start-Process -FilePath $app -ArgumentList '--ui-smoke-test' -WindowStyle Hidden -Wait
+          python -c "import json,os; from pathlib import Path; p=Path(os.environ['BAIJIA_DATA_DIR']); assert json.loads((p/'smoke-test.json').read_text())['status']=='ok'; r=json.loads((p/'ui-smoke-test.json').read_text()); assert r['status']=='ok',r"
       - uses: actions/upload-artifact@v4
         with:
           name: Windows-x64
@@ -50,10 +58,16 @@ jobs:
           path: release
           merge-multiple: true
       - name: Prepare installation notes
+        id: version
         run: |
+          VERSION="$(python -c 'import runpy; print(runpy.run_path("studio/version.py")["APP_VERSION"])')"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           cp studio/manual.pdf release/Manual.pdf
-          cat > release-notes.md <<'EOF'
-          百家观测 1.1.0
+          cat > release-notes.md <<EOF
+          百家观测 $VERSION
+
+          - 合入伙伴提交的百度旧登录态恢复修复。
+          - 新增小型关于弹窗，展示工作室 logo、出品信息和当前版本。
 
           Windows：运行 Windows-x64-Setup.exe，完成后打开桌面快捷方式。
           Apple Silicon Mac：运行 macOS-arm64.pkg。
@@ -62,8 +76,9 @@ jobs:
 
           打开软件直接进入工作台。图文教程见 Manual.pdf，软件内也可直接打开。
           EOF
-      - name: Publish private installer release
+      - name: Publish installer release
         env:
           GH_TOKEN: ${{ github.token }}
+          APP_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release create v1.1.0 --target "$GITHUB_SHA" --title "百家观测 1.1.0" --notes-file release-notes.md release/*
+          gh release create "v$APP_VERSION" --target "$GITHUB_SHA" --title "百家观测 $APP_VERSION" --notes-file release-notes.md release/*

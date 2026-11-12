@@ -36,7 +36,7 @@ foreach ($folder in @($desktop,$programs)) {
 $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\BaijiaObservatory'
 New-Item -Path $key -Force | Out-Null
 $uninstall = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + (Join-Path $appDir 'uninstall.ps1') + '"'
-@{DisplayName='百家观测';DisplayVersion='1.1.0';Publisher='Baijia Observatory';InstallLocation=$appDir;DisplayIcon=$exe;UninstallString=$uninstall;NoModify=1;NoRepair=1} | ForEach-Object {
+@{DisplayName='百家观测';DisplayVersion='__APP_VERSION__';Publisher='创想澄现工作室';InstallLocation=$appDir;DisplayIcon=$exe;UninstallString=$uninstall;NoModify=1;NoRepair=1} | ForEach-Object {
     foreach ($name in $_.Keys) { New-ItemProperty -Path $key -Name $name -Value $_[$name] -Force | Out-Null }
 }
 Start-Process -FilePath $exe -WorkingDirectory $appDir

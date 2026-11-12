@@ -24,6 +24,7 @@ from .storage import db, initialize, workspace_id, get_cookie, set_cookie
 from .provider import Provider, user_id, normalize_post, now
 from .metrics import METRICS, enrich, summarize, parse_formula, calculate
 from . import browser_login
+from .version import APP_NAME, APP_VERSION, APP_CREDIT
 
 WEB = Path(__file__).parent / 'web'
 provider = Provider()
@@ -36,7 +37,7 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(title='百家观测', lifespan=lifespan, docs_url=None, redoc_url=None)
+app = FastAPI(title=APP_NAME, version=APP_VERSION, lifespan=lifespan, docs_url=None, redoc_url=None)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1', 'localhost', 'testserver'])
 
 
@@ -80,6 +81,12 @@ def manual():
     if not target.exists():
         raise HTTPException(404, '使用说明正在准备中')
     return FileResponse(target, media_type='application/pdf', filename='百家观测使用说明.pdf')
+
+
+@app.get('/api/about')
+def about():
+    return {'name': APP_NAME, 'version': APP_VERSION, 'credit': APP_CREDIT,
+            'logo': '/assets/studio-logo.png', 'app_logo': '/assets/app-logo.png'}
 
 
 @app.post('/api/manual/open')
@@ -478,7 +485,7 @@ def index():
 
 @app.get('/api/health')
 def health():
-    return {'application': 'baijia-observatory', 'status': 'ok', 'version': '1.1.0'}
+    return {'application': 'baijia-observatory', 'status': 'ok', 'version': APP_VERSION}
 
 
 if __name__ == '__main__':

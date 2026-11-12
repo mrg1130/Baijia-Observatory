@@ -4,7 +4,7 @@
 
 A desktop workspace for Baijiahao content analytics. Add authors by their homepage URLs, collect views and interactions, then filter, rank, calculate and export results by author, publication date or selected works.
 
-Current version: **1.1.0**, with installers for Windows x64, Apple Silicon Macs and Intel Macs. The runtime is bundled. The app opens directly into a local workspace. The desktop interface uses Simplified Chinese; this guide includes the corresponding UI labels.
+Current version: **1.2.0**, with installers for Windows x64, Apple Silicon Macs and Intel Macs. The runtime is bundled. The app opens directly into a local workspace. The desktop interface uses Simplified Chinese; this guide includes the corresponding UI labels.
 
 [Download installers](https://github.com/mrg1130/Baijia-Observatory/releases/latest) · [12-page illustrated guide, in Chinese](studio/manual.pdf) · [License](LICENSE) · [Upstream and third-party notices](THIRD_PARTY_NOTICES.md)
 
@@ -12,13 +12,18 @@ Current version: **1.1.0**, with installers for Windows x64, Apple Silicon Macs 
 
 The screenshot shows 100 recent works from a test author. Account names, avatars, homepage identifiers and work titles are blurred.
 
+## What's new in 1.2.0
+
+- Includes the partner's stale Baidu session recovery fix: signing in again or disconnecting clears the previous session, and pending cleanup resumes after reopening.
+- Adds a compact 关于 (About) dialog with the app version, studio logo and studio credit. Open it from the sidebar footer or the page footer.
+
 ## Installation
 
 | Platform | Installer |
 | --- | --- |
-| Windows 64-bit | [Windows-x64-Setup.exe](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-Windows-x64-Setup.exe) |
-| Apple Silicon Mac | [macOS-arm64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-arm64.pkg) |
-| Intel Mac | [macOS-x86_64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.1.0/BaijiaObservatory-1.1.0-macOS-x86_64.pkg) |
+| Windows 64-bit | [Windows-x64-Setup.exe](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.2.0/BaijiaObservatory-1.2.0-Windows-x64-Setup.exe) |
+| Apple Silicon Mac | [macOS-arm64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.2.0/BaijiaObservatory-1.2.0-macOS-arm64.pkg) |
+| Intel Mac | [macOS-x86_64.pkg](https://github.com/mrg1130/Baijia-Observatory/releases/download/v1.2.0/BaijiaObservatory-1.2.0-macOS-x86_64.pkg) |
 
 - **Windows:** Run the installer, then open 百家观测 from the desktop or Start menu. The installer checks for Microsoft WebView2 and installs the runtime when needed.
 - **Mac:** Run the package for your processor, then open 百家观测 from Applications. Check the processor under Apple menu → About This Mac. If macOS requests developer confirmation during the first installation, select Open Anyway under System Settings → Privacy & Security.
@@ -134,7 +139,7 @@ Use `.\.venv\Scripts\python.exe` on Windows or `.venv/bin/python` on Mac to run:
 
 Browser development mode opens `http://127.0.0.1:8765` by default; set the port with `--port`. Set `BAIJIA_DATA_DIR` to give a development process a separate data directory.
 
-Tests cover homepage entry, connection state, pagination and completion states, date and selection filters, formulas, CSV, legacy workspace migration and native webview result handling on Windows and Mac. Version 1.1.0 has passed an actual Windows installation check and installation, local-service and desktop-rendering checks on both Mac architectures.
+Tests cover homepage entry, connection state, pagination and completion states, date and selection filters, formulas, CSV, legacy workspace migration and native webview result handling on Windows and Mac. The release workflow also checks the packaged local service, desktop UI, About entry and bundled logos, and verifies installation on both Mac architectures.
 
 ### Original API
 
