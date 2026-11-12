@@ -44,9 +44,11 @@ def find_browser():
     return shutil.which('msedge') or shutil.which('chrome')
 
 
-def start(owner):
+def start(owner, replace=False):
     if native_client is not None:
-        return native_client.start(owner)
+        return native_client.start(owner, replace=replace)
+    if replace:
+        disconnect(owner)
     with _lock:
         old = recover(owner)
         if old:

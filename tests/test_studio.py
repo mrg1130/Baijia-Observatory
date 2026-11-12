@@ -111,6 +111,22 @@ class StudioTest(unittest.TestCase):
         self.assertNotIn('test-private',encrypted)
         self.assertNotIn('BDUSS',json.dumps(self.client.get('/api/workspace').json()))
 
+    def test_relogin_replaces_a_saved_browser_session(self):
+        class LoginClient:
+            def __init__(self):
+                self.calls = []
+
+            def start(self, owner, replace=False):
+                self.calls.append((owner, replace))
+                return {'status': 'waiting', 'message': '重新登录'}
+
+        login = LoginClient()
+        storage.set_cookie(self.uid, 'BDUSS=stale; Hmery-Time=stale')
+        with patch.object(browser_login, 'native_client', login):
+            response = self.client.post('/api/platform/login', json={})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(login.calls, [(self.uid, True)])
+
     def test_connected_content_search_still_works(self):
         storage.set_cookie(self.uid,'BDUSS=test; Hmery-Time=test')
         page='''<div class="c-container" mu="https://baijiahao.baidu.com/s?id=123"><h3><a href="https://www.baidu.com/link?url=opaque">中国石油报文章</a></h3></div>'''

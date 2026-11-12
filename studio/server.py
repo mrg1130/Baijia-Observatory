@@ -106,7 +106,10 @@ def cookie(body: CookieBody, user=Depends(owner)):
 
 @app.post('/api/platform/login')
 def platform_login(user=Depends(owner)):
-    return browser_login.start(user['id'])
+    # Pressing “switch or sign in again” must replace both the saved credential
+    # and the browser profile's cookies. Otherwise a stale session is captured
+    # again immediately after an application restart.
+    return browser_login.start(user['id'], replace=bool(get_cookie(user['id'])))
 
 
 @app.get('/api/platform/login/status')
