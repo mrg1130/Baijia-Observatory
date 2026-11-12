@@ -41,7 +41,7 @@ jobs:
           $app = Join-Path $PWD 'dist/BaijiaObservatory/BaijiaObservatory.exe'
           Start-Process -FilePath $app -ArgumentList '--smoke-test' -WindowStyle Hidden -Wait
           Start-Process -FilePath $app -ArgumentList '--ui-smoke-test' -WindowStyle Hidden -Wait
-          python -c "import json,os; from pathlib import Path; p=Path(os.environ['BAIJIA_DATA_DIR']); assert json.loads((p/'smoke-test.json').read_text())['status']=='ok'; r=json.loads((p/'ui-smoke-test.json').read_text()); assert r['status']=='ok',r"
+          python -c "import json,os; from pathlib import Path; p=Path(os.environ['BAIJIA_DATA_DIR']); assert json.loads((p/'smoke-test.json').read_text(encoding='utf-8'))['status']=='ok'; r=json.loads((p/'ui-smoke-test.json').read_text(encoding='utf-8')); assert r['status']=='ok',r"
       - uses: actions/upload-artifact@v4
         with:
           name: Windows-x64
