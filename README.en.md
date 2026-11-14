@@ -189,12 +189,6 @@ docs/images/               README screenshots
 .github/workflows/         Cross-platform builds and releases
 ```
 
-## Documentation maintenance
-
-Generate screenshots with `docs/screenshot_preview.py`. Run it using the virtual environment’s Python, then open `http://127.0.0.1:8767/_screenshots`. The page blurs account names, avatars, homepage identifiers and work titles. README and PDF images share this capture mode.
-
-Keep `README.md` and `README.en.md` aligned on features, installers, commands and metric definitions. Update both when changing the interface, collection scope, calculations or release version. Refresh `studio/manual.pdf` and `docs/images/` when instructions or screenshots change. Update license and provenance records when adding dependencies or upstream files.
-
 ## Attribution and license
 
 The base API comes from [cv-cat/BaijiaApis](https://github.com/cv-cat/BaijiaApis), at baseline commit [`2c3d552`](https://github.com/cv-cat/BaijiaApis/tree/2c3d55253fe2c4ea3811bb95a9bcbaf64cd1c165).
