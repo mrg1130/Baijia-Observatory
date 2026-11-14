@@ -189,11 +189,6 @@ docs/images/               README 截图
 .github/workflows/         跨平台构建与发布
 ```
 
-## 文档维护
-
-截图使用 `docs/screenshot_preview.py` 生成。使用虚拟环境的 Python 运行该脚本，访问 `http://127.0.0.1:8767/_screenshots`，页面会统一模糊账号名称、头像、主页标识和作品标题。README 与 PDF 共用此模式下生成的截图。
-
-`README.md` 和 `README.en.md` 保持相同的功能、安装包、命令和指标定义。修改界面、采集范围、统计口径或发布版本时，同时更新两份 README；操作步骤或截图变化时同步维护 `studio/manual.pdf` 和 `docs/images/`。新增依赖或继承上游文件时，更新许可与来源记录。
 
 ## 来源与许可证
 
