@@ -32,7 +32,7 @@ jobs:
           test "$(uname -m)" = "$EXPECTED_ARCH"
           bash packaging/build_macos.sh
           app="/Applications/百家观测.app"
-          lipo -verify_arch "$EXPECTED_ARCH" "$app/Contents/MacOS/BaijiaObservatory"
+          test "$(lipo -archs "$app/Contents/MacOS/BaijiaObservatory")" = "$EXPECTED_ARCH"
           cmp "studio/manual.pdf" "$app/Contents/Resources/studio/manual.pdf"
           test -f "release/BaijiaObservatory-1.3.1-macOS-$EXPECTED_ARCH.pkg"
           shasum -a 256 release/*.pkg
