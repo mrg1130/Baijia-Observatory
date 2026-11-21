@@ -44,6 +44,10 @@ def initialize():
         CREATE TABLE IF NOT EXISTS calculators(id TEXT PRIMARY KEY, owner TEXT, name TEXT, expression TEXT, aggregation TEXT);
         CREATE INDEX IF NOT EXISTS posts_author ON posts(owner,source,author_id);
         CREATE TABLE IF NOT EXISTS preferences(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS sync_checkpoints(
+            owner TEXT, author_id TEXT, published TEXT NOT NULL, work_ids TEXT NOT NULL,
+            PRIMARY KEY(owner,author_id)
+        );
         ''')
         _workspace_id(c)
         c.execute("UPDATE jobs SET status='interrupted',message='软件重启，采集已中断；请重新同步' WHERE status IN ('running','queued')")

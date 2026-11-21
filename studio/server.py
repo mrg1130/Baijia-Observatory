@@ -9,7 +9,7 @@ import threading
 import time
 import webbrowser
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse, urlencode
@@ -29,6 +29,8 @@ from .version import APP_NAME, APP_VERSION, APP_CREDIT
 WEB = Path(__file__).parent / 'web'
 provider = Provider()
 job_lock = threading.Lock()
+CORE_METRICS = ('views', 'likes', 'comments', 'shares', 'favorites')
+DETAIL_INTERVAL_SECONDS = 0.35
 
 
 @asynccontextmanager
@@ -223,7 +225,8 @@ def search(q: str = '', mode: Literal['content'] = 'content', source: Literal['l
 
 def job_update(jid, **values):
     with db() as c:
-        c.execute('UPDATE jobs SET ' + ','.join(f'{k}=?' for k in values) + ' WHERE id=?', (*values.values(), jid))
+        c.execute('UPDATE jobs SET ' + ','.join(f'{k}=?' for k in values) + " WHERE id=? AND status <> 'cancelled'",
+                  (*values.values(), jid))
 
 
 def cancelled(jid):
@@ -231,7 +234,23 @@ def cancelled(jid):
         return c.execute('SELECT status FROM jobs WHERE id=?', (jid,)).fetchone()[0] == 'cancelled'
 
 
-def sync_author(jid, uid, url, max_posts=0):
+def sync_checkpoint(c, uid, aid):
+    saved = c.execute('SELECT published,work_ids FROM sync_checkpoints WHERE owner=? AND author_id=?',
+                      (uid, aid)).fetchone()
+    if saved:
+        return saved['published'], set(json.loads(saved['work_ids']))
+    author = c.execute("SELECT complete FROM authors WHERE owner=? AND source='live' AND id=?",
+                       (uid, aid)).fetchone()
+    if not author or not author['complete']:
+        return None, set()
+    latest = c.execute("SELECT MAX(published) FROM posts WHERE owner=? AND source='live' AND author_id=?",
+                       (uid, aid)).fetchone()[0]
+    ids = c.execute("SELECT id FROM posts WHERE owner=? AND source='live' AND author_id=? AND published=?",
+                    (uid, aid, latest))
+    return latest, {row['id'] for row in ids}
+
+
+def sync_author(jid, uid, url, max_posts=0, update_only=False):
     pages = processed = failed = 0
     aid = user_id(url)
     try:
@@ -241,8 +260,20 @@ def sync_author(jid, uid, url, max_posts=0):
         cookie = get_cookie(uid)
         profile = provider.profile(url, cookie)
         with db() as c:
-            c.execute('INSERT INTO authors VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner,source,id) DO UPDATE SET name=excluded.name,fans=excluded.fans,likes=excluded.likes,total=excluded.total,complete=0',
+            checkpoint, checkpoint_ids = sync_checkpoint(c, uid, aid)
+            if checkpoint:
+                c.execute('INSERT OR IGNORE INTO sync_checkpoints VALUES (?,?,?,?)',
+                          (uid, aid, checkpoint, json.dumps(sorted(checkpoint_ids))))
+            known_ids = {row['id'] for row in c.execute(
+                "SELECT id FROM posts WHERE owner=? AND source='live' AND author_id=? AND views IS NOT NULL "
+                "AND likes IS NOT NULL AND comments IS NOT NULL AND shares IS NOT NULL AND favorites IS NOT NULL",
+                (uid, aid))}
+            c.execute('INSERT INTO authors VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner,source,id) DO UPDATE SET name=excluded.name,fans=excluded.fans,likes=excluded.likes,total=excluded.total',
                       (uid, 'live', aid, profile['name'], profile['url'], profile['fans'], profile['likes'], profile['total'], None, 0))
+        incremental = update_only and checkpoint is not None
+        latest, latest_ids = (checkpoint, set(checkpoint_ids)) if incremental else (None, set())
+        if update_only and not incremental:
+            job_update(jid, message='尚无完整采集记录，本次建立全量采集基准')
         cursor, seen_cursors, seen_posts = None, set(), set()
         limited = False
         while True:
@@ -272,20 +303,35 @@ def sync_author(jid, uid, url, max_posts=0):
                 if post['id'] in seen_posts:
                     continue
                 seen_posts.add(post['id'])
+                published_at = post['published']
+                if incremental:
+                    if published_at is None and post['id'] in known_ids:
+                        continue
+                    if published_at and (published_at < checkpoint or
+                                         (published_at == checkpoint and post['id'] in checkpoint_ids)):
+                        continue
+                if published_at and (latest is None or published_at > latest):
+                    latest, latest_ids = published_at, set()
+                if published_at and published_at == latest:
+                    latest_ids.add(post['id'])
                 try:
                     metrics = provider.detail(item, profile, cookie)
-                    if any(metrics[k] is None for k in ('views', 'likes', 'comments', 'shares', 'favorites')):
+                    if any(metrics[k] is None for k in CORE_METRICS):
                         failed += 1
                 except Exception:
                     metrics = {k: None for k in METRICS}
                     failed += 1
-                with db() as c:
+                if cancelled(jid):
+                    return
+                with job_lock, db() as c:
+                    if c.execute("SELECT status FROM jobs WHERE id=?", (jid,)).fetchone()[0] == 'cancelled':
+                        return
                     c.execute('INSERT OR REPLACE INTO posts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                               (uid, 'live', post['id'], aid, post['title'], post['url'], post['kind'], post['published'],
                                *(metrics.get(k) for k in METRICS), now(), post['raw']))
                 processed += 1
                 job_update(jid, pages=pages, processed=processed, failed=failed, message=f'已扫描 {pages} 页 · {processed} 件作品 · {failed} 件数据不完整')
-                time.sleep(.35)
+                time.sleep(DETAIL_INTERVAL_SECONDS)
             if limited or (max_posts and processed >= max_posts and str(has_more) not in ('0', 'False', 'false')):
                 limited = True
                 break
@@ -298,11 +344,29 @@ def sync_author(jid, uid, url, max_posts=0):
             seen_cursors.add(next_cursor)
             cursor = next_cursor
             time.sleep(.8)
+        if incremental:
+            message = f'更新采集处理 {processed} 件新作品' if processed else '没有发现新作品'
+        elif limited:
+            message = f'已处理指定范围的 {processed} 件作品'
+        else:
+            message = f'已遍历全部分页，共处理 {processed} 件作品'
+        status = 'partial' if failed else 'sampled' if limited else 'updated' if incremental else 'completed'
+        if failed:
+            message += f'，{failed} 件数据不完整，请重试'
         with db() as c:
-            c.execute("UPDATE authors SET synced=?,complete=? WHERE owner=? AND source='live' AND id=?", (now(), int(failed == 0 and not limited), uid, aid))
-        job_update(jid, status='partial' if failed else 'sampled' if limited else 'completed', pages=pages, processed=processed, failed=failed,
-                   message=(f'已完成指定范围：{processed} 件作品；历史作品尚未全部扫描' if limited else f'已遍历全部分页，共处理 {processed} 件作品')
-                   + (f'；{failed} 件数据不完整，请重新同步' if failed else '，同步完成'))
+            changed = c.execute(
+                "UPDATE jobs SET status=?,message=?,pages=?,processed=?,failed=? WHERE id=? AND status <> 'cancelled'",
+                (status, message, pages, processed, failed, jid)).rowcount
+            if not changed:
+                return
+            if not failed and not limited:
+                c.execute("UPDATE authors SET synced=?,complete=1 WHERE owner=? AND source='live' AND id=?",
+                          (now(), uid, aid))
+                if latest:
+                    c.execute('INSERT OR REPLACE INTO sync_checkpoints VALUES (?,?,?,?)',
+                              (uid, aid, latest, json.dumps(sorted(latest_ids))))
+                elif not incremental:
+                    c.execute('DELETE FROM sync_checkpoints WHERE owner=? AND author_id=?', (uid, aid))
     except ValueError as exc:
         if not cancelled(jid):
             job_update(jid, status='failed', message=str(exc), pages=pages, processed=processed, failed=failed)
@@ -316,35 +380,128 @@ def first_dynamic_id(items):
     return items[0].get('dynamic_id', '') if items else ''
 
 
+def recollect_range(start, end):
+    if not start or not end:
+        raise ValueError('请填写开始发布日期和结束发布日期')
+    try:
+        if any(date.fromisoformat(day).isoformat() != day for day in (start, end)):
+            raise ValueError
+    except ValueError:
+        raise ValueError('发布日期无效') from None
+    if start > end:
+        raise ValueError('开始发布日期不能晚于结束发布日期')
+
+
+def recollect_author(jid, uid, aid, start, end):
+    try:
+        if cancelled(jid):
+            return
+        job_update(jid, status='running', message='正在查找日期范围内已采集的作品…')
+        with db() as c:
+            posts = c.execute(
+                """SELECT id, raw FROM posts WHERE owner=? AND source='live' AND author_id=?
+                   AND substr(published,1,10) BETWEEN ? AND ? ORDER BY published DESC, id""",
+                (uid, aid, start, end)).fetchall()
+        if not posts:
+            job_update(jid, status='no_match', message='所选日期内没有已采集的作品')
+            return
+        if cancelled(jid):
+            return
+        cookie = get_cookie(uid)
+        if not cookie:
+            raise ValueError('请先连接百度账号，再重采作品')
+        profile = provider.profile(f'https://author.baidu.com/home/{aid}', cookie)
+        failed = 0
+        total = len(posts)
+        metric_assignments = ','.join(f'{metric}=?' for metric in METRICS)
+        for index, post in enumerate(posts, 1):
+            if cancelled(jid):
+                return
+            try:
+                item = json.loads(post['raw'])
+                if not isinstance(item, dict) or normalize_post(item, aid)['id'] != post['id']:
+                    raise ValueError('本地作品 ID 与采集记录不匹配')
+                metrics = provider.detail(item, profile, cookie)
+                if any(metrics.get(k) is None for k in CORE_METRICS):
+                    raise ValueError('作品指标不完整')
+            except Exception:
+                metrics = None
+                failed += 1
+            with db() as c:
+                changed = c.execute(
+                    """UPDATE jobs SET processed=?,failed=?,message=? WHERE id=? AND status='running'""",
+                    (index, failed, f'正在重采 {index} / {total} 件 · 成功 {index - failed} 件 · 失败 {failed} 件',
+                     jid)).rowcount
+                if not changed:
+                    return
+                if metrics is not None:
+                    c.execute(
+                        f"""UPDATE posts SET {metric_assignments},collected=?
+                            WHERE owner=? AND source='live' AND author_id=? AND id=?""",
+                        (*(metrics.get(k) for k in METRICS), now(), uid, aid, post['id']))
+            if index < total:
+                time.sleep(DETAIL_INTERVAL_SECONDS)
+        succeeded = total - failed
+        status, label = ('failed', '重采失败') if not succeeded else (
+            ('partial', '重采部分失败') if failed else ('recollected', '重采完成'))
+        job_update(jid, status=status, message=f'{label} · 成功 {succeeded} 件 · 失败 {failed} 件')
+    except ValueError as exc:
+        job_update(jid, status='failed', message=str(exc))
+    except Exception:
+        job_update(jid, status='failed', message='重采中断，已保留采集结果。请检查连接后重试')
+
+
 class SyncBody(BaseModel):
     url: str = Field(max_length=500)
     max_posts: int = Field(default=0, ge=0, le=100000)
+    mode: Literal['full', 'update', 'recollect'] = 'full'
+    start: str = ''
+    end: str = ''
 
 
 @app.post('/api/sync')
 def sync(body: SyncBody, user=Depends(owner)):
     aid = user_id(body.url)
-    if not get_cookie(user['id']):
+    uid = user['id']
+    recollecting = body.mode == 'recollect'
+    if recollecting:
+        recollect_range(body.start, body.end)
+        if body.max_posts:
+            raise ValueError('按发布时间重采无需设置作品数量')
+    elif not get_cookie(uid):
         raise ValueError('请先连接百度账号')
+    if body.mode == 'update' and body.max_posts:
+        raise ValueError('更新采集使用上次采集边界，无需设置作品数量')
     with job_lock:
         with db() as c:
-            if c.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('running','queued')", (user['id'],)).fetchone():
+            if c.execute("SELECT 1 FROM jobs WHERE owner=? AND status IN ('running','queued')", (uid,)).fetchone():
                 raise ValueError('已有任务正在同步，请等待完成或先停止该任务')
+            if recollecting and not c.execute(
+                """SELECT 1 FROM authors a JOIN posts p
+                   ON p.owner=a.owner AND p.source=a.source AND p.author_id=a.id
+                   WHERE a.owner=? AND a.source='live' AND a.id=? LIMIT 1""", (uid, aid)).fetchone():
+                raise ValueError('请选择已采集的监控账号')
             jid = secrets.token_hex(12)
-            c.execute('INSERT INTO jobs(id,owner,author_id,status,message,created) VALUES (?,?,?,?,?,?)', (jid, user['id'], aid, 'queued', '等待同步…', now()))
-        threading.Thread(target=sync_author, args=(jid, user['id'], f'https://author.baidu.com/home/{aid}', body.max_posts), daemon=True).start()
+            c.execute('INSERT INTO jobs(id,owner,author_id,status,message,created) VALUES (?,?,?,?,?,?)',
+                      (jid, uid, aid, 'queued', '等待重采…' if recollecting else '等待同步…', now()))
+        if recollecting:
+            target, args = recollect_author, (jid, uid, aid, body.start, body.end)
+        else:
+            target, args = sync_author, (jid, uid, f'https://author.baidu.com/home/{aid}', body.max_posts,
+                                         body.mode == 'update')
+        threading.Thread(target=target, args=args, daemon=True).start()
     return {'id': jid}
 
 
 @app.get('/api/jobs')
 def jobs(user=Depends(owner)):
     with db() as c:
-        return [dict(r) for r in c.execute('SELECT * FROM jobs WHERE owner=? ORDER BY created DESC LIMIT 20', (user['id'],))]
+        return [dict(r) for r in c.execute('SELECT * FROM jobs WHERE owner=? ORDER BY created DESC, rowid DESC LIMIT 20', (user['id'],))]
 
 
 @app.post('/api/jobs/{jid}/cancel')
 def cancel(jid: str, user=Depends(owner)):
-    with db() as c:
+    with job_lock, db() as c:
         c.execute("UPDATE jobs SET status='cancelled',message='用户已停止，已采集结果保留' WHERE id=? AND owner=? AND status IN ('running','queued')", (jid, user['id']))
     return {'ok': True}
 

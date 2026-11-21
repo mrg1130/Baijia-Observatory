@@ -98,9 +98,10 @@ def main():
             for _ in range(100):
                 snapshot=read_snapshot(main_window,"({title:document.title,text:document.body.innerText,manual:!!document.querySelector('[data-action=manual]'),about:!!document.querySelector('[data-action=about]')})")
                 body=snapshot.get('text','')
-                if snapshot.get('manual') and snapshot.get('about') and all(label in body for label in ['数据概览','添加监控账号','连接与设置']):
+                if snapshot.get('manual') and snapshot.get('about') and all(label in body for label in [
+                        '数据概览', '添加监控账号', '连接与设置', '按发布时间重采']):
                     report={'status':'ok','version':APP_VERSION,'title':snapshot.get('title'),'workspace_rendered':True,
-                            'manual_button_rendered':True,'about_button_rendered':True}
+                            'manual_button_rendered':True,'about_button_rendered':True,'recollect_button_rendered':True}
                     break
                 time.sleep(.1)
             if report['status']!='ok':

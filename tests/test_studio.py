@@ -212,6 +212,33 @@ class StudioTest(unittest.TestCase):
         self.assertEqual(self.client.get('/api/authors').json()[0]['complete'],0)
         self.assertIsNone(self.client.post('/api/posts/query',json={}).json()['posts'][0]['views'])
 
+    def test_update_retries_partial_results_and_keeps_same_time_new_posts(self):
+        profile = self.setup_job()
+        original = {'feed_id': '10', 'dynamic_id': '110', 'ctime': 1700000000}
+        newer = {'feed_id': '12', 'dynamic_id': '112', 'ctime': 1700000100}
+        tied = {'feed_id': '11', 'dynamic_id': '111', 'ctime': 1700000000}
+        older = {'feed_id': '9', 'dynamic_id': '109', 'ctime': 1699999900}
+        metrics = {key: 1 for key in server.METRICS}
+
+        def run(items, details, *, update=False):
+            with storage.db() as c:
+                c.execute("UPDATE jobs SET status='queued' WHERE id='job'")
+            with patch.object(server.provider, 'profile', return_value=profile), \
+                 patch.object(server.provider, 'page', return_value={'list': items, 'hasMore': 0}), \
+                 patch.object(server.provider, 'detail', side_effect=details) as detail, \
+                 patch.object(server.time, 'sleep'):
+                server.sync_author('job', self.uid, profile['url'], update_only=update)
+            return [call.args[0]['feed_id'] for call in detail.call_args_list]
+
+        run([original, older], [metrics, metrics])
+        page = [older, newer, original, tied]
+        self.assertEqual(run(page, [metrics, ValueError('detail unavailable')], update=True), ['12', '11'])
+        self.assertEqual(self.client.get('/api/jobs').json()[0]['status'], 'partial')
+        self.assertEqual(run(page, [metrics, metrics], update=True), ['12', '11'])
+        self.assertEqual(self.client.get('/api/jobs').json()[0]['status'], 'updated')
+        self.assertEqual(run(page, [], update=True), [])
+        self.assertEqual(len(self.client.post('/api/posts/query', json={}).json()['posts']), 4)
+
     def test_sync_repeated_cursor_stops(self):
         profile=self.setup_job()
         page={'list':[{'feed_id':'1','dynamic_id':'101'}],'hasMore':1,'query':{'ctime':'same'}}

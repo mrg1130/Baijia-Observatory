@@ -4,13 +4,21 @@
 
 A desktop workspace for Baijiahao content analytics. Add authors by their homepage URLs, collect views and interactions, then filter, rank, calculate and export results by author, publication date or selected works.
 
-Current version: **1.2.0**, with installers for Windows x64, Apple Silicon Macs and Intel Macs. The runtime is bundled. The app opens directly into a local workspace. The desktop interface uses Simplified Chinese; this guide includes the corresponding UI labels.
+This local **1.3.1** build includes a Windows x64 installer. The app opens directly into a local workspace. The desktop interface uses Simplified Chinese. Public release installers are linked below.
 
 [Download installers](https://github.com/mrg1130/Baijia-Observatory/releases/latest) · [12-page illustrated guide, in Chinese](studio/manual.pdf) · [License](LICENSE) · [Upstream and third-party notices](THIRD_PARTY_NOTICES.md)
 
 ![Baijia Observatory overview](docs/images/overview.png)
 
 The screenshot shows 100 recent works from a test author. Account names, avatars, homepage identifiers and work titles are blurred.
+
+## Refresh by publication date in 1.3.1
+
+Choose 按发布时间重采 (Refresh by publication date) from the overview or works page. Select a monitored account with collected works and enter both dates. The app uses Beijing time and includes both dates. Each successful request updates that work's metrics and collection time. Failed requests preserve that work's previous data.
+
+## Incremental collection in 1.3.0
+
+Choose 更新采集 (Update collection) in the sync dialog. The app uses each author's latest publication from the last complete run, including newly found works at the same timestamp. A first update without a complete run collects the entire history. Failed or stopped jobs retain the previous boundary.
 
 ## What's new in 1.2.0
 
@@ -188,6 +196,12 @@ tests/                     Automated tests
 docs/images/               README screenshots
 .github/workflows/         Cross-platform builds and releases
 ```
+
+## Documentation maintenance
+
+Generate screenshots with `docs/screenshot_preview.py`. Run it using the virtual environment’s Python, then open `http://127.0.0.1:8767/_screenshots`. The page blurs account names, avatars, homepage identifiers and work titles. README and PDF images share this capture mode.
+
+Keep `README.md` and `README.en.md` aligned on features, installers, commands and metric definitions. Update both when changing the interface, collection scope, calculations or release version. Refresh `studio/manual.pdf` and `docs/images/` when instructions or screenshots change. Update license and provenance records when adding dependencies or upstream files.
 
 ## Attribution and license
 
