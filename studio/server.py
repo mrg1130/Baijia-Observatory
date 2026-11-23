@@ -70,11 +70,14 @@ def owner():
     return {'id': workspace_id()}
 
 
+def has_platform_connection(owner_id):
+    with db() as c:
+        return bool(c.execute('SELECT credential FROM accounts WHERE id=?', (owner_id,)).fetchone()[0])
+
+
 @app.get('/api/workspace')
 def workspace(user=Depends(owner)):
-    with db() as c:
-        connected = bool(c.execute('SELECT credential FROM accounts WHERE id=?', (user['id'],)).fetchone()[0])
-    return {**user, 'connected': connected}
+    return {**user, 'connected': has_platform_connection(user['id'])}
 
 
 @app.get('/api/manual')
@@ -118,12 +121,14 @@ def platform_login(user=Depends(owner)):
     # Pressing “switch or sign in again” must replace both the saved credential
     # and the browser profile's cookies. Otherwise a stale session is captured
     # again immediately after an application restart.
-    return browser_login.start(user['id'], replace=bool(get_cookie(user['id'])))
+    result = browser_login.start(user['id'], replace=bool(get_cookie(user['id'])))
+    return {**result, 'connected': has_platform_connection(user['id'])}
 
 
 @app.get('/api/platform/login/status')
 def platform_status(user=Depends(owner)):
-    return browser_login.status(user['id'])
+    result = browser_login.status(user['id'])
+    return {**result, 'connected': has_platform_connection(user['id'])}
 
 
 @app.delete('/api/platform')

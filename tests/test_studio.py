@@ -145,6 +145,16 @@ class StudioTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(login.calls, [(self.uid, True)])
 
+    def test_login_status_reports_the_saved_connection_after_window_close(self):
+        with patch.object(browser_login, 'status', return_value={'status': 'closed', 'message': 'closed'}):
+            initial = self.client.get('/api/platform/login/status').json()
+            self.assertFalse(initial['connected'])
+            storage.set_cookie(self.uid, 'BDUSS=test; Hmery-Time=test')
+            connected = self.client.get('/api/platform/login/status').json()
+        self.assertEqual(connected['status'], 'closed')
+        self.assertTrue(connected['connected'])
+        self.assertTrue(self.client.get('/api/workspace').json()['connected'])
+
     def test_connected_content_search_still_works(self):
         storage.set_cookie(self.uid,'BDUSS=test; Hmery-Time=test')
         page='''<div class="c-container" mu="https://baijiahao.baidu.com/s?id=123"><h3><a href="https://www.baidu.com/link?url=opaque">中国石油报文章</a></h3></div>'''

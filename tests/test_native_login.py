@@ -3,6 +3,7 @@ import sys
 import tempfile
 import types
 import unittest
+from http.cookies import SimpleCookie
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,14 +11,19 @@ from unittest.mock import patch
 class Event:
     def __init__(self):
         self.handlers = []
+        self.ready = False
 
     def __iadd__(self, handler):
         self.handlers.append(handler)
         return self
 
     def fire(self):
+        self.ready = True
         for handler in list(self.handlers):
             handler()
+
+    def is_set(self):
+        return self.ready
 
 
 class Events:
@@ -32,6 +38,7 @@ class Window:
         self.clear_count = 0
         self.loaded_urls = []
         self.destroyed = False
+        self.cookies = []
 
     def clear_cookies(self):
         self.clear_count += 1
@@ -43,7 +50,7 @@ class Window:
         return self.loaded_urls[-1] if self.loaded_urls else 'https://www.baidu.com/'
 
     def get_cookies(self):
-        return []
+        return self.cookies
 
     def show(self):
         pass
@@ -102,6 +109,37 @@ class NativeLoginTest(unittest.TestCase):
         self.client.disconnect('owner')
         self.assertTrue((Path(self.temp.name) / 'login-reset-owner.pending').exists())
         self.set_cookie.assert_called_once_with('owner', '')
+
+    def test_relogin_clears_an_already_loaded_window(self):
+        def create_ready_window(*args, **kwargs):
+            self.__class__.window = Window()
+            self.window.events.loaded.fire()
+            return self.window
+
+        with patch.object(self.native_login.webview, 'create_window', create_ready_window):
+            self.client.start('owner', replace=True)
+        self.assertEqual(self.window.clear_count, 1)
+        self.assertFalse((Path(self.temp.name) / 'login-reset-owner.pending').exists())
+
+    def test_status_finishes_a_pending_reset_without_an_event_callback(self):
+        self.client.disconnect('owner')
+        self.client.start('owner')
+        self.window.events.loaded.ready = True
+
+        self.assertIn('重新登录', self.client.status('owner')['message'])
+        self.assertEqual(self.window.clear_count, 1)
+        self.assertFalse((Path(self.temp.name) / 'login-reset-owner.pending').exists())
+
+    def test_only_complete_baidu_credentials_are_saved(self):
+        self.client.start('owner')
+        self.window.events.loaded.fire()
+        self.window.cookies = [SimpleCookie('BDUSS=synthetic; Domain=.baidu.com')]
+        self.assertEqual(self.client.status('owner')['status'], 'waiting')
+        self.set_cookie.assert_not_called()
+
+        self.window.cookies.append(SimpleCookie('Hmery-Time=synthetic; Domain=.baidu.com'))
+        self.assertEqual(self.client.status('owner')['status'], 'connected')
+        self.set_cookie.assert_called_once_with('owner', 'BDUSS=synthetic; Hmery-Time=synthetic')
 
 
 if __name__ == '__main__':

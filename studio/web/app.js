@@ -8,7 +8,7 @@ const fmt=(v,d=0)=>v==null?'—':Number(v).toLocaleString('zh-CN',{maximumFracti
 const compact=v=>v==null?'—':v>=10000?(v/10000).toFixed(v>=1000000?0:1)+'万':fmt(v);
 const fields={views:'阅读 / 播放',likes:'点赞',comments:'评论',shares:'转发',favorites:'收藏',live_views:'直播回放',unread:'未读',interactions:'互动合计',engagement:'互动率',published:'发布时间',title:'作品标题'};
 const aggNames={totals:'先汇总指标，再计算公式',sum:'逐作品计算后求和',average:'逐作品计算后取平均',max:'逐作品计算后取最大值',min:'逐作品计算后取最小值'};
-const state={workspace:null,view:'dashboard',source:'live',authors:[],author:'',start:'',end:'',period:'all',keyword:'',kind:'',sort:'published',direction:'desc',scope:'all',selected:new Set(),posts:[],summary:{totals:{},coverage:{},custom:[],count:0},trend:[],calculators:[],jobs:[],page:1,size:10,searchMode:'content',loginTimer:null,queryVersion:0};
+const state={workspace:null,view:'dashboard',source:'live',authors:[],author:'',start:'',end:'',period:'all',keyword:'',kind:'',sort:'published',direction:'desc',scope:'all',selected:new Set(),posts:[],summary:{totals:{},coverage:{},custom:[],count:0},trend:[],calculators:[],jobs:[],page:1,size:10,searchMode:'content',loginTimer:null,loginAttempt:null,queryVersion:0};
 let toastTimer, jobTimer, keywordTimer;
 async function api(url,body,method){const options={method:method||(body!==undefined?'POST':'GET'),headers:{}};if(body!==undefined){options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}const r=await fetch(url,options);if(!r.ok){let e;try{e=await r.json();}catch{e={detail:'服务暂时无法访问'};}throw new Error(typeof e.detail==='string'?e.detail:'输入格式有误，请检查后重试');}return r.status===204?null:r.json();}
 function toast(msg,error=false){clearTimeout(toastTimer);const t=$('#toast');t.textContent=msg;t.className='show'+(error?' error':'');toastTimer=setTimeout(()=>t.className='',5000);}
@@ -31,7 +31,7 @@ async function loadData(){
 async function update(){if(await loadData())renderMain();}
 function currentAuthor(){return state.authors.find(a=>a.id===state.author);}
 function title(){return{dashboard:'数据概览',works:'作品数据',calculators:'自定义统计器',settings:'连接与设置'}[state.view];}
-function render(){const workspace=state.workspace;$('#app').innerHTML=`<div class="layout"><aside class="sidebar">${brand()}<div class="nav-label">功能</div><nav class="nav" aria-label="工作台导航">${[['dashboard','grid','数据概览'],['works','file','作品数据'],['calculators','calc','自定义统计器'],['settings','link','连接与设置']].map(([v,i,t])=>`<button data-action="nav" data-view="${v}" title="${t}" class="${state.view===v?'active':''}">${icon(i,18)}<span>${t}</span></button>`).join('')}</nav><div class="nav-label">监控账号</div><div class="side-authors">${authorLinks()}</div><div class="sidebar-bottom"><button class="about-button" data-action="about" title="关于百家观测">${icon('info',16)}<span>关于</span></button><div class="side-note"><strong>统计口径</strong>按作品发布时间筛选，<br>展示最近采集的累计数据。</div></div></aside><main class="main"><header class="topbar"><div class="breadcrumb">工作台 ${icon('right',12)} <b id="breadcrumb-current">${title()}</b></div><div class="mobile-brand"><div class="brand-mark">${icon('chart',18)}</div>百家观测</div><div class="top-actions"><button class="global-search" data-action="search">${icon('search',15)}搜索内容<span class="keycap">/</span></button><button class="global-search" data-action="manual">${icon('file',15)}使用说明</button><select id="source" class="source-switch" aria-label="数据来源"><option value="live" ${state.source==='live'?'selected':''}>真实数据</option><option value="demo" ${state.source==='demo'?'selected':''}>演示数据</option></select><span class="badge ${state.source==='demo'?'demo':''}"><span class="dot"></span>${state.source==='demo'?'演示模式':workspace.connected?'百度已连接':'百度待连接'}</span></div></header><div class="content" id="main-content"></div></main></div>`;renderMain();}
+function render(){$('#app').innerHTML=`<div class="layout"><aside class="sidebar">${brand()}<div class="nav-label">功能</div><nav class="nav" aria-label="工作台导航">${[['dashboard','grid','数据概览'],['works','file','作品数据'],['calculators','calc','自定义统计器'],['settings','link','连接与设置']].map(([v,i,t])=>`<button data-action="nav" data-view="${v}" title="${t}" class="${state.view===v?'active':''}">${icon(i,18)}<span>${t}</span></button>`).join('')}</nav><div class="nav-label">监控账号</div><div class="side-authors">${authorLinks()}</div><div class="sidebar-bottom"><button class="about-button" data-action="about" title="关于百家观测">${icon('info',16)}<span>关于</span></button><div class="side-note"><strong>统计口径</strong>按作品发布时间筛选，<br>展示最近采集的累计数据。</div></div></aside><main class="main"><header class="topbar"><div class="breadcrumb">工作台 ${icon('right',12)} <b id="breadcrumb-current">${title()}</b></div><div class="mobile-brand"><div class="brand-mark">${icon('chart',18)}</div>百家观测</div><div class="top-actions"><button class="global-search" data-action="search">${icon('search',15)}搜索内容<span class="keycap">/</span></button><button class="global-search" data-action="manual">${icon('file',15)}使用说明</button><select id="source" class="source-switch" aria-label="数据来源"><option value="live" ${state.source==='live'?'selected':''}>真实数据</option><option value="demo" ${state.source==='demo'?'selected':''}>演示数据</option></select><span class="badge ${state.source==='demo'?'demo':''}"><span class="dot"></span><span id="platform-badge" role="status">${connectionLabel()}</span></span></div></header><div class="content" id="main-content"></div></main></div>`;renderMain();}
 function renderMain(){
   if(!$('#main-content'))return;
   const focused=document.activeElement;
@@ -87,7 +87,7 @@ function calculatorsView(){
       </section>
     </div>`;
 }
-function settings(){const connected=state.workspace.connected;return `<div class="settings-grid"><section class="panel"><div class="panel-head"><h2>百度账号连接</h2><span class="badge ${connected?'':'demo'}">${connected?'登录态已连接':'尚未连接'}</span></div><div class="settings-body"><p>通过百度官方登录页面完成身份验证。桌面版在软件内打开百度官方登录窗口，登录成功后自动连接百家号数据接口。</p><div class="login-methods"><span class="method">${icon('qr',14)}扫码登录</span><span class="method">${icon('phone',14)}短信验证码</span><span class="method">${icon('lock',14)}账号密码</span><span class="method">其他官方可用方式</span></div><button class="btn primary" data-action="official-login">${icon('link',15)}${connected?'重新打开官方登录窗口':'打开百度官方登录窗口'}</button><p class="tiny">具体登录方式由百度官方根据账号、地区及设备展示，软件不限制页面提供的方式。完成验证或切换账号后，等待软件提示连接成功。</p><div class="setting-block"><div>Cookie 手动连接<small>适用于已登录浏览器或自动连接未取得 Hmery-Time 的情况。</small></div><button class="btn small" data-action="cookie">配置</button></div><div class="setting-block"><div>断开百度账号<small>清除百度连接状态。</small></div><button class="btn small danger" data-action="disconnect">断开连接</button></div><div class="notice">在官方窗口完成登录或验证后即可同步作品。Windows 使用系统加密保存登录态，Mac 使用钥匙串保存登录态。</div></div></section><div><section class="panel"><div class="panel-head"><h2>数据与统计口径</h2>${icon('info',16)}</div><div class="settings-body"><div class="setting-block"><div>作品发布时间<small>统一按北京时间解释与筛选。</small></div></div><div class="setting-block"><div>阅读与互动<small>保存最近一次同步时的累计值，不等同于时间段内新增。</small></div></div><div class="setting-block"><div>数据可见性<small>平台没有提供的字段显示为 —。不可见或已删除作品无法保证获取。</small></div></div><div class="setting-block"><div>公开搜索<small>账号通过主页链接添加；内容支持本地和在线关键词搜索。</small></div></div><div class="setting-block"><div>演示模式<small>使用独立虚构样本，所有计算功能均可体验。</small></div><button class="btn small" data-action="demo">体验</button></div></div></section></div></div><div style="margin:28px 0 16px"><h2>最近采集任务</h2></div><div class="job-list">${state.jobs.length?state.jobs.map(j=>`<section class="job-item"><div class="jobs-top"><span class="mono">用户 ${esc(j.author_id)}</span><span class="badge ${['failed','partial','interrupted'].includes(j.status)?'error':''}">${esc({completed:'完成',updated:'更新完成',sampled:'指定范围完成',running:'采集中',queued:'等待中',partial:'数据不完整',failed:'失败',cancelled:'已停止',interrupted:'已中断'}[j.status]||j.status)}</span></div><p>${esc(j.message)}</p><p>${j.created.slice(0,16).replace('T',' ')} UTC · ${j.pages} 页 · ${j.processed} 件作品</p></section>`).join(''):empty('clock','暂无采集任务','填写用户主页链接添加监控账号后开始同步。')}</div>`;}
+function settings(){const connected=state.workspace.connected;return `<div class="settings-grid"><section class="panel"><div class="panel-head"><h2>百度账号连接</h2><span class="badge ${connected?'':'demo'}">${connected?'登录态已连接':'尚未连接'}</span></div><div class="settings-body"><p>通过百度官方登录页面完成身份验证。桌面版在软件内打开百度官方登录窗口，登录成功后自动连接百家号数据接口。</p><div class="login-methods"><span class="method">${icon('qr',14)}扫码登录</span><span class="method">${icon('phone',14)}短信验证码</span><span class="method">${icon('lock',14)}账号密码</span><span class="method">其他官方可用方式</span></div><button class="btn primary" data-action="official-login">${icon('link',15)}${connected?'重新打开官方登录窗口':'打开百度官方登录窗口'}</button> <button class="btn" data-action="refresh-login">刷新连接状态</button><p class="tiny">具体登录方式由百度官方根据账号、地区及设备展示，软件不限制页面提供的方式。完成验证或切换账号后，等待软件提示连接成功。</p><div class="setting-block"><div>Cookie 手动连接<small>适用于已登录浏览器或自动连接未取得 Hmery-Time 的情况。</small></div><button class="btn small" data-action="cookie">配置</button></div><div class="setting-block"><div>断开百度账号<small>清除百度连接状态。</small></div><button class="btn small danger" data-action="disconnect">断开连接</button></div><div class="notice">在官方窗口完成登录或验证后即可同步作品。Windows 使用系统加密保存登录态，Mac 使用钥匙串保存登录态。</div></div></section><div><section class="panel"><div class="panel-head"><h2>数据与统计口径</h2>${icon('info',16)}</div><div class="settings-body"><div class="setting-block"><div>作品发布时间<small>统一按北京时间解释与筛选。</small></div></div><div class="setting-block"><div>阅读与互动<small>保存最近一次同步时的累计值，不等同于时间段内新增。</small></div></div><div class="setting-block"><div>数据可见性<small>平台没有提供的字段显示为 —。不可见或已删除作品无法保证获取。</small></div></div><div class="setting-block"><div>公开搜索<small>账号通过主页链接添加；内容支持本地和在线关键词搜索。</small></div></div><div class="setting-block"><div>演示模式<small>使用独立虚构样本，所有计算功能均可体验。</small></div><button class="btn small" data-action="demo">体验</button></div></div></section></div></div><div style="margin:28px 0 16px"><h2>最近采集任务</h2></div><div class="job-list">${state.jobs.length?state.jobs.map(j=>`<section class="job-item"><div class="jobs-top"><span class="mono">用户 ${esc(j.author_id)}</span><span class="badge ${['failed','partial','interrupted'].includes(j.status)?'error':''}">${esc({completed:'完成',updated:'更新完成',sampled:'指定范围完成',running:'采集中',queued:'等待中',partial:'数据不完整',failed:'失败',cancelled:'已停止',interrupted:'已中断'}[j.status]||j.status)}</span></div><p>${esc(j.message)}</p><p>${j.created.slice(0,16).replace('T',' ')} UTC · ${j.pages} 页 · ${j.processed} 件作品</p></section>`).join(''):empty('clock','暂无采集任务','填写用户主页链接添加监控账号后开始同步。')}</div>`;}
 function modal(title,body,cls=''){const d=$('#modal');d.className=cls;d.setAttribute('aria-label',title);d.innerHTML=`<header class="modal-head"><h2>${title}</h2><button class="icon-btn" data-action="close-modal" aria-label="关闭">${icon('close',18)}</button></header><div class="modal-body">${body}</div>`;if(!d.open)d.showModal();}
 function safeLink(url){try{const p=new URL(url);return p.protocol==='https:'&&(['baijiahao.baidu.com','author.baidu.com','www.baidu.com'].includes(p.hostname));}catch{return false;}}
 function searchDialog(){
@@ -159,13 +159,107 @@ async function aboutDialog(){
   const info=await api('/api/about');
   modal('关于百家观测',`<div class="about-app"><img src="${esc(info.app_logo)}" alt="百家观测应用图标" width="44" height="44"><div><h3>${esc(info.name)}</h3><p class="about-version">版本 ${esc(info.version)}</p></div></div><div class="about-studio"><img class="studio-logo" src="${esc(info.logo)}" alt="创想澄现工作室 logo" width="180" height="65"><p>${esc(info.credit)}</p></div>`,'about-modal');
 }
-async function officialLogin(){const result=await api('/api/platform/login',{});modal('在百度官方窗口完成登录',`<div class="login-methods"><span class="method">${icon('qr',14)}扫码</span><span class="method">${icon('phone',14)}短信</span><span class="method">${icon('lock',14)}密码</span><span class="method">以官方页面为准</span></div><p class="help">百度官方窗口已打开。请点击百度页面右上角「登录」，选择页面提供的任一登录方式；如出现验证码或风险验证，请在该窗口中完成。</p><div class="login-progress">${icon('refresh',20,'spin')}<div id="login-progress-text">${esc(result.message)}</div></div><p class="help">登录后需要访问百家号主页以生成接口必需的 Hmery-Time。软件将自动尝试跳转；如未连接，请在官方窗口打开一个用户主页或改用手动 Cookie。</p><div class="modal-footer"><button class="btn" data-action="cookie">手动 Cookie 连接</button><button class="btn primary" data-action="close-modal">暂时返回工作台</button></div>`);clearInterval(state.loginTimer);state.loginTimer=setInterval(async()=>{try{const r=await api('/api/platform/login/status');const el=$('#login-progress-text');if(el)el.textContent=r.message;if(r.status==='connected'){clearInterval(state.loginTimer);state.workspace=await api('/api/workspace');if(el){el.className='success-text';el.textContent=r.message;}toast('百度账号已连接');render();}if(['closed','expired'].includes(r.status))clearInterval(state.loginTimer);}catch{clearInterval(state.loginTimer);}},2500);}
+function connectionLabel(){
+  if(state.source==='demo')return '演示模式';
+  return state.workspace?.connected?'百度已连接':'百度待连接';
+}
+
+function setConnection(connected){
+  if(typeof connected!=='boolean'||!state.workspace||state.workspace.connected===connected)return;
+  state.workspace.connected=connected;
+  const badge=$('#platform-badge');
+  if(badge)badge.textContent=connectionLabel();
+  renderMain();
+}
+
+function stopLoginPolling(){
+  clearTimeout(state.loginTimer);
+  state.loginAttempt=null;
+}
+
+function showLoginProgress(message,finished=false){
+  const progress=$('#login-progress-text');
+  if(!progress)return;
+  progress.textContent=message;
+  if(finished)progress.parentElement.querySelector('.spin')?.classList.remove('spin');
+}
+
+async function pollPlatformLogin(attempt){
+  if(state.loginAttempt!==attempt||attempt.checking)return;
+  attempt.checking=true;
+  try{
+    const result=await api('/api/platform/login/status');
+    if(state.loginAttempt!==attempt)return;
+    setConnection(result.connected);
+    if(result.connected){
+      stopLoginPolling();
+      if($('#login-progress-text'))$('#modal').close();
+      toast('百度账号已连接');
+    }else if(['closed','expired'].includes(result.status)){
+      stopLoginPolling();
+      showLoginProgress(result.message,true);
+    }else showLoginProgress(result.message);
+  }catch{
+    if(state.loginAttempt===attempt)showLoginProgress('暂时无法检查登录状态，正在重试…');
+  }finally{
+    attempt.checking=false;
+    if(state.loginAttempt===attempt){
+      if(Date.now()-attempt.startedAt>=900000){
+        stopLoginPolling();
+        showLoginProgress('登录等待已超时，可重新打开百度登录窗口。',true);
+      }else state.loginTimer=setTimeout(()=>pollPlatformLogin(attempt),1500);
+    }
+  }
+}
+
+async function officialLogin(){
+  if(state.loginAttempt?.starting)return;
+  stopLoginPolling();
+  const attempt={startedAt:Date.now(),starting:true,checking:false};
+  state.loginAttempt=attempt;
+  let result;
+  try{
+    result=await api('/api/platform/login',{});
+  }catch(error){
+    if(state.loginAttempt===attempt)stopLoginPolling();
+    throw error;
+  }
+  if(state.loginAttempt!==attempt)return;
+  attempt.starting=false;
+  setConnection(result.connected);
+  modal('在百度官方窗口完成登录',`
+    <p class="help">在官方窗口点击「登录」，选择扫码、短信或密码。如需验证，请在该窗口完成。</p>
+    <div class="login-progress">${icon('refresh',20,'spin')}<div id="login-progress-text" role="status">${esc(result.message)}</div></div>
+    <p class="help">百度登录完成后，软件会打开百家号主页确认连接。</p>
+    <div class="modal-footer"><button class="btn" data-action="cookie">手动 Cookie 连接</button><button class="btn primary" data-action="close-modal">暂时返回工作台</button></div>`);
+  void pollPlatformLogin(attempt);
+}
+
+async function refreshLoginStatus(){
+  if(state.loginAttempt){
+    if(!state.loginAttempt.starting){
+      clearTimeout(state.loginTimer);
+      await pollPlatformLogin(state.loginAttempt);
+    }
+    return;
+  }
+  const result=await api('/api/platform/login/status');
+  setConnection(result.connected);
+  toast(result.connected?'百度账号已连接':result.message);
+}
+
+window.addEventListener('focus',()=>{
+  if(!state.workspace||state.loginAttempt)return;
+  api('/api/workspace').then(({connected})=>{
+    if(!state.loginAttempt)setConnection(connected);
+  }).catch(()=>{});
+});
 async function pollJobs(force=false){try{const previous=JSON.stringify(state.jobs);const jobs=await api('/api/jobs');state.jobs=jobs;if(force||JSON.stringify(jobs)!==previous){await refreshBase();await loadData();renderMain();}}catch(e){if(force)throw e;}}
 function dateString(d){return new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);}
 async function setSource(source){if(!['live','demo'].includes(source))return;if(source==='demo')await api('/api/demo',{});state.source=source;localStorage.setItem('baijia-source',source);state.author='';state.selected.clear();state.scope='all';state.page=1;await refreshBase();await loadData();render();}
 function resetFilters(){Object.assign(state,{author:'',start:'',end:'',keyword:'',kind:'',period:'all',scope:'all',page:1});}
-document.addEventListener('submit',async e=>{e.preventDefault();const form=e.target;const button=$('button[type=submit]',form);if(button)button.disabled=true;try{if(form.id==='author-form')await addAuthorSubmit();else if(form.id==='search-form')await searchSubmit();else if(form.id==='sync-form')await startSync($('#sync-url').value,$('#sync-limit').value);else if(form.id==='recollect-form')await startRecollect();else if(form.id==='calc-form'){const body={name:$('#calc-name').value,expression:$('#calc-expression').value,aggregation:$('#calc-agg').value};await api('/api/calculators'+(form.dataset.id?'/'+form.dataset.id:''),body,form.dataset.id?'PUT':'POST');$('#modal').close();await refreshBase();await update();toast('统计器已保存');}else if(form.id==='cookie-form'){await api('/api/platform/cookie',{cookie:$('#cookie-value').value});$('#cookie-value').value='';$('#modal').close();state.workspace=await api('/api/workspace');render();toast('百度登录态已加密保存');}}catch(error){const err=form.id==='calc-form'?$('#calc-error'):form.id==='author-form'?$('#author-error'):form.id==='recollect-form'?$('#recollect-error'):null;if(err){err.textContent=error.message;err.classList.add('show');}else toast(error.message,true);}finally{if(button)button.disabled=false;}});
-document.addEventListener('click',async e=>{const b=e.target.closest('[data-action]');if(!b)return;const action=b.dataset.action;try{switch(action){case'nav':state.view=b.dataset.view;renderMain();window.scrollTo({top:0,behavior:'instant'});break;case'about':await aboutDialog();break;case'manual':{const result=await api('/api/manual/open',{});if(result.desktop){if(!result.ok)toast(result.message);}else window.open('/api/manual','_blank','noopener');break;}case'retry-workspace':await startWorkspace();break;case'search':searchDialog();break;case'add-author':await addAuthorDialog();break;case'close-modal':$('#modal').close();break;case'sync':syncDialog();break;case'recollect':recollectDialog();break;case'new-calc':calcDialog();break;case'edit-calc':calcDialog(b.dataset.id);break;case'delete-calc':await api('/api/calculators/'+b.dataset.id,{},'DELETE');if(state.sort==='calc_'+b.dataset.id)state.sort='published';await refreshBase();await update();toast('统计器已删除');break;case'insert-field':{const t=$('#calc-expression');t.setRangeText(b.dataset.field,t.selectionStart,t.selectionEnd,'end');t.focus();break;}case'cookie':cookieDialog();break;case'official-login':await officialLogin();break;case'disconnect':await api('/api/platform',{},'DELETE');clearInterval(state.loginTimer);state.workspace=await api('/api/workspace');render();toast('已断开百度账号');break;case'demo':await setSource('demo');state.view='dashboard';renderMain();break;case'go-live':await setSource('live');state.view='settings';renderMain();break;case'author':state.author=b.dataset.id;state.page=1;state.view='dashboard';await update();break;case'period':{state.period=b.dataset.period;if(state.period==='all'){state.start='';state.end='';}else{const today=new Date();state.end=dateString(today);state.start=dateString(new Date(today.getTime()-(Number(state.period)-1)*86400000));}state.page=1;await update();break;}case'reset-filters':resetFilters();await update();break;case'reset-calculator-filters':{const scope=state.scope;resetFilters();state.scope=scope;await update();break;}case'page':state.page=Number(b.dataset.page);renderMain();break;case'direction':state.direction=state.direction==='desc'?'asc':'desc';await update();break;case'sort':if(state.sort===b.dataset.sort)state.direction=state.direction==='desc'?'asc':'desc';else{state.sort=b.dataset.sort;state.direction='desc';}await update();break;case'clear-selection':state.selected.clear();await update();break;case'selected-stats':state.scope='selected';await update();break;case'cancel-job':await api('/api/jobs/'+b.dataset.id+'/cancel',{});await pollJobs(true);break;case'pick-post':{const r=state.searchResults[Number(b.dataset.index)];state.author=r.author_id;state.keyword=r.title;state.view='works';state.start='';state.end='';state.period='all';state.kind='';state.page=1;$('#modal').close();await update();break;}case'export':{const r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(query(state.scope==='selected'))});if(!r.ok)throw new Error((await r.json()).detail||'导出失败');const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`百家观测-${state.source==='demo'?'演示':'作品'}-${dateString(new Date())}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('CSV 已导出，范围与当前统计条件一致');break;}}}catch(error){toast(error.message,true);}});
+document.addEventListener('submit',async e=>{e.preventDefault();const form=e.target;const button=$('button[type=submit]',form);if(button)button.disabled=true;try{if(form.id==='author-form')await addAuthorSubmit();else if(form.id==='search-form')await searchSubmit();else if(form.id==='sync-form')await startSync($('#sync-url').value,$('#sync-limit').value);else if(form.id==='recollect-form')await startRecollect();else if(form.id==='calc-form'){const body={name:$('#calc-name').value,expression:$('#calc-expression').value,aggregation:$('#calc-agg').value};await api('/api/calculators'+(form.dataset.id?'/'+form.dataset.id:''),body,form.dataset.id?'PUT':'POST');$('#modal').close();await refreshBase();await update();toast('统计器已保存');}else if(form.id==='cookie-form'){await api('/api/platform/cookie',{cookie:$('#cookie-value').value});stopLoginPolling();$('#cookie-value').value='';$('#modal').close();setConnection(true);toast('百度登录态已加密保存');}}catch(error){const err=form.id==='calc-form'?$('#calc-error'):form.id==='author-form'?$('#author-error'):form.id==='recollect-form'?$('#recollect-error'):null;if(err){err.textContent=error.message;err.classList.add('show');}else toast(error.message,true);}finally{if(button)button.disabled=false;}});
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-action]');if(!b)return;const action=b.dataset.action;try{switch(action){case'nav':state.view=b.dataset.view;renderMain();window.scrollTo({top:0,behavior:'instant'});break;case'about':await aboutDialog();break;case'manual':{const result=await api('/api/manual/open',{});if(result.desktop){if(!result.ok)toast(result.message);}else window.open('/api/manual','_blank','noopener');break;}case'retry-workspace':await startWorkspace();break;case'search':searchDialog();break;case'add-author':await addAuthorDialog();break;case'close-modal':$('#modal').close();break;case'sync':syncDialog();break;case'recollect':recollectDialog();break;case'new-calc':calcDialog();break;case'edit-calc':calcDialog(b.dataset.id);break;case'delete-calc':await api('/api/calculators/'+b.dataset.id,{},'DELETE');if(state.sort==='calc_'+b.dataset.id)state.sort='published';await refreshBase();await update();toast('统计器已删除');break;case'insert-field':{const t=$('#calc-expression');t.setRangeText(b.dataset.field,t.selectionStart,t.selectionEnd,'end');t.focus();break;}case'cookie':cookieDialog();break;case'official-login':await officialLogin();break;case'refresh-login':await refreshLoginStatus();break;case'disconnect':await api('/api/platform',{},'DELETE');stopLoginPolling();setConnection(false);toast('已断开百度账号');break;case'demo':await setSource('demo');state.view='dashboard';renderMain();break;case'go-live':await setSource('live');state.view='settings';renderMain();break;case'author':state.author=b.dataset.id;state.page=1;state.view='dashboard';await update();break;case'period':{state.period=b.dataset.period;if(state.period==='all'){state.start='';state.end='';}else{const today=new Date();state.end=dateString(today);state.start=dateString(new Date(today.getTime()-(Number(state.period)-1)*86400000));}state.page=1;await update();break;}case'reset-filters':resetFilters();await update();break;case'reset-calculator-filters':{const scope=state.scope;resetFilters();state.scope=scope;await update();break;}case'page':state.page=Number(b.dataset.page);renderMain();break;case'direction':state.direction=state.direction==='desc'?'asc':'desc';await update();break;case'sort':if(state.sort===b.dataset.sort)state.direction=state.direction==='desc'?'asc':'desc';else{state.sort=b.dataset.sort;state.direction='desc';}await update();break;case'clear-selection':state.selected.clear();await update();break;case'selected-stats':state.scope='selected';await update();break;case'cancel-job':await api('/api/jobs/'+b.dataset.id+'/cancel',{});await pollJobs(true);break;case'pick-post':{const r=state.searchResults[Number(b.dataset.index)];state.author=r.author_id;state.keyword=r.title;state.view='works';state.start='';state.end='';state.period='all';state.kind='';state.page=1;$('#modal').close();await update();break;}case'export':{const r=await fetch('/api/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(query(state.scope==='selected'))});if(!r.ok)throw new Error((await r.json()).detail||'导出失败');const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`百家观测-${state.source==='demo'?'演示':'作品'}-${dateString(new Date())}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('CSV 已导出，范围与当前统计条件一致');break;}}}catch(error){toast(error.message,true);}});
 function resetWorkFilter(){state.keyword='';state.kind='';state.page=1;}
 document.addEventListener('change',async e=>{const t=e.target;try{switch(t.id){case'source':await setSource(t.value);break;case'author-filter':state.author=t.value;state.page=1;await update();break;case'start-date':case'end-date':{const start=$('#start-date').value,end=$('#end-date').value;if(start&&end&&start>end){toast('开始日期不能晚于结束日期',true);t.value=t.id==='start-date'?state.start:state.end;return;}state.start=start;state.end=end;state.period='custom';state.page=1;await update();break;}case'scope-filter':state.scope=t.value;await update();break;case'kind-filter':state.kind=t.value;state.page=1;await update();break;case'sort-filter':state.sort=t.value;await update();break;case'select-page':state.posts.slice((state.page-1)*state.size,state.page*state.size).forEach(p=>setWorkSelected(p.id,t.checked));await update();break;default:if(t.classList.contains('select-post')){setWorkSelected(t.dataset.id,t.checked);await update();}}}catch(error){toast(error.message,true);}});
 function setWorkSelected(id,checked){

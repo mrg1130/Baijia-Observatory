@@ -2,7 +2,7 @@ name: Desktop installers
 on:
   workflow_dispatch:
   push:
-    branches: ['release/baijia-1.4.0']
+    branches: ['release/baijia-1.4.1']
 permissions:
   contents: read
 jobs:
@@ -79,8 +79,8 @@ jobs:
           cat > release-notes.md <<EOF
           百家观测 $VERSION
 
-          - 自定义统计器可按标题搜索，并组合作者、发布时间、作品类型和手选范围。
-          - 支持跨页勾选，统计结果和 CSV 使用同一批作品。
+          - 修复首次打开百度窗口时旧登录态清理可能卡在等待中的问题。
+          - 登录状态检查遇到临时错误时会继续重试，也可在「连接与设置」手动刷新。
 
           Windows：运行 Windows-x64-Setup.exe，完成后打开桌面快捷方式。
           Apple Silicon Mac：运行 macOS-arm64.pkg。
