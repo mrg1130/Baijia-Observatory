@@ -176,9 +176,10 @@ function setWorkSelected(id,checked){
 }
 document.addEventListener('input',e=>{
   if(e.target.id!=='work-keyword')return;
+  clearTimeout(keywordTimer);
+  if(e.isComposing)return;
   state.keyword=e.target.value;
   state.page=1;
-  clearTimeout(keywordTimer);
   keywordTimer=setTimeout(()=>update().catch(error=>toast(error.message,true)),280);
 });
 document.addEventListener('keydown',e=>{if(e.key==='/'&&state.workspace&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!$('#modal').open){e.preventDefault();searchDialog();}});
