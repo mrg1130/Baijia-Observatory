@@ -518,7 +518,11 @@ class Query(BaseModel):
     direction: Literal['asc', 'desc'] = 'desc'
 
 
-def fetch_posts(query, uid):
+class PostsQuery(Query):
+    include_candidates: bool = False
+
+
+def fetch_posts(query, uid, *, include_candidates=False):
     for d in (query.start, query.end):
         if d:
             try:
@@ -536,8 +540,8 @@ def fetch_posts(query, uid):
     undated = sum(not r['published'] for r in rows)
     rows = [r for r in rows if (not query.start or r['published'] and r['published'][:10] >= query.start)
             and (not query.end or r['published'] and r['published'][:10] <= query.end)]
-    if query.selected is not None:
-        selected = set(query.selected)
+    selected = None if query.selected is None else set(query.selected)
+    if selected is not None and not include_candidates:
         rows = [r for r in rows if r['id'] in selected]
     for r in rows:
         for calc in calculators:
@@ -550,6 +554,9 @@ def fetch_posts(query, uid):
         raise ValueError('不支持该排序字段')
     present = sorted([r for r in rows if r.get(key) is not None], key=lambda r: r[key], reverse=query.direction == 'desc')
     rows = present + [r for r in rows if r.get(key) is None]
+    candidates = rows
+    if selected is not None and include_candidates:
+        rows = [r for r in candidates if r['id'] in selected]
     trend = {}
     for r in rows:
         if r['published']:
@@ -559,12 +566,16 @@ def fetch_posts(query, uid):
             for key in ('views', 'interactions'):
                 if r[key] is not None:
                     point[key] = (point[key] or 0) + r[key]
-    return {'posts': rows, 'summary': summarize(rows, calculators), 'trend': sorted(trend.values(), key=lambda p: p['date']), 'undated': undated}
+    result = {'posts': rows, 'summary': summarize(rows, calculators),
+              'trend': sorted(trend.values(), key=lambda p: p['date']), 'undated': undated}
+    if include_candidates:
+        result['candidates'] = candidates
+    return result
 
 
 @app.post('/api/posts/query')
-def posts(query: Query, user=Depends(owner)):
-    return fetch_posts(query, user['id'])
+def posts(query: PostsQuery, user=Depends(owner)):
+    return fetch_posts(query, user['id'], include_candidates=query.include_candidates)
 
 
 @app.post('/api/export')

@@ -71,6 +71,8 @@ Authors are added using `https://author.baidu.com/home/NUMERIC_ID`. 搜索内容
 
 ### Custom calculators
 
+Search titles and filter by author, publication date and work type in Custom calculators. Checking a work switches to selected-work statistics, and selections carry across pages. The calculator and CSV use the selected works that match the active filters. Clear the filters to include all checked works.
+
 Formulas support numbers, parentheses, addition, subtraction, multiplication and division, with these variables:
 
 | Variable | Metric |

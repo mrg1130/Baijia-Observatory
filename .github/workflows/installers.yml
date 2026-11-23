@@ -2,7 +2,7 @@ name: Desktop installers
 on:
   workflow_dispatch:
   push:
-    branches: [desktop-installers]
+    branches: ['release/baijia-1.4.0']
 permissions:
   contents: read
 jobs:
@@ -19,7 +19,18 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install -r requirements-build.txt
       - run: python -m unittest discover -s tests -v
-      - run: bash packaging/build_macos.sh
+      - name: Build and verify macOS installer
+        env:
+          RUNNER_LABEL: ${{ matrix.runner }}
+        run: |
+          set -euo pipefail
+          expected=arm64
+          if [[ "$RUNNER_LABEL" == *-intel ]]; then expected=x86_64; fi
+          test "$(uname -m)" = "$expected"
+          bash packaging/build_macos.sh
+          app="/Applications/百家观测.app"
+          test "$(lipo -archs "$app/Contents/MacOS/BaijiaObservatory")" = "$expected"
+          cmp studio/manual.pdf "$app/Contents/Resources/studio/manual.pdf"
       - uses: actions/upload-artifact@v4
         with:
           name: macOS-${{ matrix.runner }}
@@ -47,6 +58,7 @@ jobs:
           name: Windows-x64
           path: release/*Setup.exe
   release:
+    if: github.event_name == 'push'
     needs: [macos, windows]
     runs-on: ubuntu-latest
     permissions:
@@ -63,11 +75,12 @@ jobs:
           VERSION="$(python -c 'import runpy; print(runpy.run_path("studio/version.py")["APP_VERSION"])')"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           cp studio/manual.pdf release/Manual.pdf
+          (cd release && sha256sum *.pkg *.exe Manual.pdf > SHA256SUMS.txt)
           cat > release-notes.md <<EOF
           百家观测 $VERSION
 
-          - 合入伙伴提交的百度旧登录态恢复修复。
-          - 新增小型关于弹窗，展示工作室 logo、出品信息和当前版本。
+          - 自定义统计器可按标题搜索，并组合作者、发布时间、作品类型和手选范围。
+          - 支持跨页勾选，统计结果和 CSV 使用同一批作品。
 
           Windows：运行 Windows-x64-Setup.exe，完成后打开桌面快捷方式。
           Apple Silicon Mac：运行 macOS-arm64.pkg。
@@ -81,4 +94,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           APP_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release create "v$APP_VERSION" --target "$GITHUB_SHA" --title "百家观测 $APP_VERSION" --notes-file release-notes.md release/*
+          gh release create "v$APP_VERSION" --target "$GITHUB_SHA" --title "百家观测 $APP_VERSION" --latest --notes-file release-notes.md release/*

@@ -101,6 +101,24 @@ class StudioTest(unittest.TestCase):
         self.assertEqual(self.client.request('DELETE','/api/calculators/'+cid,json={}).status_code,200)
         self.assertEqual(len(self.client.get('/api/calculators').json()),0)
 
+    def test_calculator_candidates_remain_visible_with_selected_statistics(self):
+        self.demo()
+        calculator = {'name': '阅读总计', 'expression': 'views', 'aggregation': 'sum'}
+        self.assertEqual(self.client.post('/api/calculators', json=calculator).status_code, 200)
+        works = self.query(author='demo-01').json()['posts']
+        work, other = works[0], works[-1]
+        day = work['published'][:10]
+        filters = dict(author='demo-01', start=day, end=day, kind=work['kind'], keyword=work['title'])
+        expected_candidates = self.query(**filters).json()['posts']
+        scoped = self.query(**filters, selected=[work['id'], other['id']], include_candidates=True).json()
+        self.assertEqual(scoped['candidates'], expected_candidates)
+        self.assertEqual([item['id'] for item in scoped['posts']], [work['id']])
+        self.assertEqual(scoped['summary']['count'], 1)
+        self.assertEqual(scoped['summary']['custom'][0]['value'], work['views'])
+        empty = self.query(**filters, selected=[], include_candidates=True).json()
+        self.assertEqual(empty['candidates'], expected_candidates)
+        self.assertIsNone(empty['summary']['custom'][0]['value'])
+
     def test_cookie_dpapi_and_validation(self):
         self.assertEqual(self.client.post('/api/platform/cookie',json={'cookie':'BDUSS=abc'}).status_code,400)
         cookie='BDUSS=test-private;Hmery-Time=demo'
