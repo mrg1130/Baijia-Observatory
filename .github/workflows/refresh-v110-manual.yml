@@ -1,0 +1,84 @@
+name: Refresh 1.1.0 bundled manuals
+on:
+  push:
+    branches: ['release/v1.1.0-manual-redaction-20261123']
+permissions:
+  contents: read
+jobs:
+  package:
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            original_sha256: 5588c57e195b1149031fd75dd27a63b51ef7ff77a17dafec1fcdf32dc5ab1eab
+          - runner: macos-15-intel
+            arch: x86_64
+            original_sha256: 698e48a1222b1b558cd755a4e7e619be9c0a0938f431d32dc21d2b00ab66f17d
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Replace the manual and verify the installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCH: ${{ matrix.arch }}
+          ORIGINAL_SHA256: ${{ matrix.original_sha256 }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "$ARCH"
+          name="BaijiaObservatory-1.1.0-macOS-$ARCH.pkg"
+          work="$(mktemp -d "$RUNNER_TEMP/baijia-manual.XXXXXX")"
+          gh release download v1.1.0 --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir "$work"
+          printf '%s  %s\n' "$ORIGINAL_SHA256" "$work/$name" | shasum -a 256 -c
+          pkgutil --expand-full "$work/$name" "$work/expanded"
+          root="$work/expanded/Payload"
+          app="$root/百家观测.app"
+          manual="$app/Contents/Resources/studio/manual.pdf"
+          test -f "$manual"
+          test ! -L "$manual"
+          cmp -s studio/manual.pdf "$manual" && exit 1
+          cp studio/manual.pdf "$manual"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict "$app"
+          test "$(lipo -archs "$app/Contents/MacOS/BaijiaObservatory")" = "$ARCH"
+          pkgbuild --analyze --root "$root" "$work/components.plist"
+          python3 - "$work/components.plist" <<'PY'
+          import plistlib
+          import sys
+          from pathlib import Path
+          path = Path(sys.argv[1])
+          components = plistlib.loads(path.read_bytes())
+          assert len(components) == 1
+          components[0]['BundleIsRelocatable'] = False
+          path.write_bytes(plistlib.dumps(components))
+          PY
+          mkdir -p release
+          pkgbuild --root "$root" --component-plist "$work/components.plist" \
+            --install-location /Applications --identifier com.baijia.observatory --version 1.1.0 "release/$name"
+          sudo installer -pkg "release/$name" -target /
+          installed="/Applications/百家观测.app"
+          codesign --verify --deep --strict "$installed"
+          cmp studio/manual.pdf "$installed/Contents/Resources/studio/manual.pdf"
+          test "$(lipo -archs "$installed/Contents/MacOS/BaijiaObservatory")" = "$ARCH"
+          export BAIJIA_DATA_DIR="$work/smoke-data"
+          "$installed/Contents/MacOS/BaijiaObservatory" --smoke-test
+          "$installed/Contents/MacOS/BaijiaObservatory" --ui-smoke-test
+          python3 - "$BAIJIA_DATA_DIR" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          folder = Path(sys.argv[1])
+          for name in ('smoke-test.json', 'ui-smoke-test.json'):
+              report = json.loads((folder / name).read_text(encoding='utf-8'))
+              assert report['status'] == 'ok', report
+          PY
+          shasum -a 256 "release/$name"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macOS-${{ matrix.arch }}
+          path: release/*.pkg
+          if-no-files-found: error
